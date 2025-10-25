@@ -8,13 +8,13 @@ inductive Position
   | A
   | B
   | C
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Fintype
 
 -- Whether the monkey is currently high or low
 inductive Height
   | High
   | Low
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Fintype
 
 -- The Enum of propositional variables
 inductive MonkeyBoxProp
@@ -23,7 +23,7 @@ inductive MonkeyBoxProp
   | BananaAt (p : Position) -- The banana is at position p
   | Level (h : Height) -- The monkey is at height h
   | HasBanana -- The monkey has the banana
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Fintype
 
 -- The Move Operator. Requires the monkey to be low and at some position p1.
 def Move (p1 : Position) (p2 : Position) : STRIPS_Operator MonkeyBoxProp where
@@ -74,7 +74,34 @@ def All_MonkeyBox_Actions : Set (STRIPS_Operator MonkeyBoxProp) :=
 -- The complete STRIPS planning problem for the monkey and bananas example.
 def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
   Props := MonkeyBoxProp
+  prop_decidable := instDecidableEqMonkeyBoxProp
   Actions := All_MonkeyBox_Actions
-  initial_state := {MonkeyBoxProp.At Position.A, MonkeyBoxProp.BoxAt Position.B,
+  current_state := {MonkeyBoxProp.At Position.A, MonkeyBoxProp.BoxAt Position.B,
     MonkeyBoxProp.BananaAt Position.C, MonkeyBoxProp.Level Height.Low}
-  goal_state := {MonkeyBoxProp.HasBanana}
+  goal_states := {{MonkeyBoxProp.HasBanana}}
+
+
+
+open MonkeyBoxProp Position Height
+
+-- The search is not implemented yet, but we can try to run a simulation manually.
+def Example_Simulation_Step1_State : List MonkeyBoxProp :=
+  -- First synthesize the move A B action
+  let move_AB := Move A B;
+  apply_action_if_applicable MonkeyBox_STRIPS_Plan move_AB
+
+#eval Example_Simulation_Step1_State
+
+-- All subsequent steps, manually inputted for now.
+def Example_Simulation_End_state : List MonkeyBoxProp :=
+  let next := apply MonkeyBox_STRIPS_Plan (Move A B) (by decide);
+  let next := apply next (MoveBox B C) (by decide);
+  let next := apply next (ClimbUp C) (by decide);
+  let next := apply next (TakeBananas C) (by decide);
+
+
+  -- return the result, the final state
+  next.current_state
+
+
+#eval Example_Simulation_End_state
