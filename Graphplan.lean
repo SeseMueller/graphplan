@@ -25,39 +25,41 @@ inductive MonkeyBoxProp
   | HasBanana -- The monkey has the banana
   deriving DecidableEq, Repr, Fintype
 
+open MonkeyBoxProp Position Height STRIPS
+
 -- The Move Operator. Requires the monkey to be low and at some position p1.
 def Move (p1 : Position) (p2 : Position) : STRIPS_Operator MonkeyBoxProp where
-  preconditions := {MonkeyBoxProp.At p1, MonkeyBoxProp.Level Height.Low}
+  preconditions := {At p1, Level Low}
   neg_preconditions := {}
-  add_effects := {MonkeyBoxProp.At p2}
-  del_effects := {MonkeyBoxProp.At p1}
+  add_effects := {At p2}
+  del_effects := {At p1}
 
 -- The ClimbUp Operator. Requires the monkey to be at the same position as the box and be low.
 def ClimbUp (p : Position) : STRIPS_Operator MonkeyBoxProp where
-  preconditions := {MonkeyBoxProp.At p, MonkeyBoxProp.BoxAt p, MonkeyBoxProp.Level Height.Low}
+  preconditions := {At p, BoxAt p, Level Low}
   neg_preconditions := {}
-  add_effects := {MonkeyBoxProp.Level Height.High}
-  del_effects := {MonkeyBoxProp.Level Height.Low}
+  add_effects := {Level High}
+  del_effects := {Level Low}
 
 -- The ClimbDown Operator. Requires the monkey to be high (and at the same position as the box).
 def ClimbDown (p : Position) : STRIPS_Operator MonkeyBoxProp where
-  preconditions := {MonkeyBoxProp.At p, MonkeyBoxProp.BoxAt p, MonkeyBoxProp.Level Height.High}
+  preconditions := {At p, BoxAt p, Level High}
   neg_preconditions := {}
-  add_effects := {MonkeyBoxProp.Level Height.Low}
-  del_effects := {MonkeyBoxProp.Level Height.High}
+  add_effects := {Level Low}
+  del_effects := {Level High}
 
 -- The MoveBox Operator. Requires the monkey to be low and at the same position as the box.
 def MoveBox (p1 : Position) (p2 : Position) : STRIPS_Operator MonkeyBoxProp where
-  preconditions := {MonkeyBoxProp.At p1, MonkeyBoxProp.BoxAt p1, MonkeyBoxProp.Level Height.Low}
+  preconditions := {At p1, BoxAt p1, Level Low}
   neg_preconditions := {}
-  add_effects := {MonkeyBoxProp.BoxAt p2, MonkeyBoxProp.At p2}
-  del_effects := {MonkeyBoxProp.BoxAt p1, MonkeyBoxProp.At p1}
+  add_effects := {BoxAt p2, At p2}
+  del_effects := {BoxAt p1, At p1}
 
 -- The TakeBananas Operator. Requires the monkey to be high and at the same position as the bananas.
 def TakeBananas (p : Position) : STRIPS_Operator MonkeyBoxProp where
-  preconditions := {MonkeyBoxProp.At p, MonkeyBoxProp.BananaAt p, MonkeyBoxProp.Level Height.High}
+  preconditions := {At p, BananaAt p, Level High}
   neg_preconditions := {}
-  add_effects := {MonkeyBoxProp.HasBanana}
+  add_effects := {HasBanana}
   del_effects := {}
 
 
@@ -76,27 +78,15 @@ def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
   Props := MonkeyBoxProp
   prop_decidable := instDecidableEqMonkeyBoxProp
   Actions := All_MonkeyBox_Actions
-  current_state := {MonkeyBoxProp.At Position.A, MonkeyBoxProp.BoxAt Position.B,
-    MonkeyBoxProp.BananaAt Position.C, MonkeyBoxProp.Level Height.Low}
-  goal_states := {{MonkeyBoxProp.HasBanana}}
-
-
-
-open MonkeyBoxProp Position Height
-
--- The search is not implemented yet, but we can try to run a simulation manually.
-def Example_Simulation_Step1_State : List MonkeyBoxProp :=
-  -- First synthesize the move A B action
-  let move_AB := Move A B;
-  apply_action_if_applicable MonkeyBox_STRIPS_Plan move_AB
-
-#eval Example_Simulation_Step1_State
+  current_state := {At A, BoxAt B, BananaAt C, Level Low}
+  goal_states := {{HasBanana}}
 
 -- All subsequent steps, manually inputted for now.
 def Example_Simulation_End_state : List MonkeyBoxProp :=
   let next := apply MonkeyBox_STRIPS_Plan (Move A B) (by decide);
   let next := apply next (MoveBox B C) (by decide);
   let next := apply next (ClimbUp C) (by decide);
+  -- let next := apply next (TakeBananas C) (by decide);
   let next := apply next (TakeBananas C) (by decide);
 
 
@@ -105,3 +95,12 @@ def Example_Simulation_End_state : List MonkeyBoxProp :=
 
 
 #eval Example_Simulation_End_state
+
+-- The same example, but using the DSL operator `>-`
+def Example_Simulation_End_state_DSL : STRIPS_Plan :=
+  let test := MonkeyBox_STRIPS_Plan
+    >- Move A B
+    >- MoveBox B C
+    >- ClimbUp C
+    >- TakeBananas C
+  test

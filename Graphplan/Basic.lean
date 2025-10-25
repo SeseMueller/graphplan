@@ -4,7 +4,7 @@ import Mathlib.Data.Finset.Disjoint
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Tactic.DeriveFintype
 
--- TODO: Test Fintype or List
+namespace STRIPS
 
 -- A STRIPS operator is a 4-tuple, where each set is a set of propositional variables.
 structure STRIPS_Operator (Props : Type) where
@@ -78,3 +78,8 @@ def apply (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
     (h : is_applicable a) : STRIPS_Plan :=
   { sp with current_state := apply_action_with_proof sp a h}
   -- Wait, this is a monad, right?
+
+-- Small DSL for application
+scoped infixl: 60 " >- " => fun sp a => apply sp a (by decide)
+
+end STRIPS
