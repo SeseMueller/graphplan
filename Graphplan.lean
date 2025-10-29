@@ -81,26 +81,12 @@ def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
   current_state := {At A, BoxAt B, BananaAt C, Level Low}
   goal_states := {{HasBanana}}
 
--- All subsequent steps, manually inputted for now.
-def Example_Simulation_End_state : List MonkeyBoxProp :=
-  let next := apply MonkeyBox_STRIPS_Plan (Move A B) (by decide);
-  let next := apply next (MoveBox B C) (by decide);
-  let next := apply next (ClimbUp C) (by decide);
-  -- let next := apply next (TakeBananas C) (by decide);
-  let next := apply next (TakeBananas C) (by decide);
-
-
-  -- return the result, the final state
-  next.current_state
-
-
-#eval Example_Simulation_End_state
-
 -- The same example, but using the DSL operator `>-`
 def Example_Simulation_End_state_DSL : STRIPS_Plan :=
-  let test := MonkeyBox_STRIPS_Plan
-    >- Move A B
-    >- MoveBox B C
+  let test :=
+    TakeBananas C
     >- ClimbUp C
-    >- TakeBananas C
+    >- MoveBox B C
+    >- Move A B
+    >- MonkeyBox_STRIPS_Plan
   test

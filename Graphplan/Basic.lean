@@ -74,12 +74,25 @@ def apply_action_with_proof (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
   apply_action a
 
 -- Applies the action, given a proof, returning the new state
-def apply (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
+def apply_action' (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
     (h : is_applicable a) : STRIPS_Plan :=
   { sp with current_state := apply_action_with_proof sp a h}
   -- Wait, this is a monad, right?
 
--- Small DSL for application
-scoped infixl: 60 " >- " => fun sp a => apply sp a (by decide)
+-- DSL syntax for applying an action to a STRIPS plan
+syntax:10 (name := applyMove) term " >- " term : term
+macro_rules
+  -- This is a bit more complicated, because we basically want opposite parsing order
+  -- than is given. In the example "start_state >- Move A B >- MoveBox B C", the second
+  -- ">-" takes in both Moves, but we want to parse it as
+  -- "start_state >- Move A B" and then " >- MoveBox B C"
+  -- So we instead only take the term to the right of ">-", and construct a function
+  -- that maps a STRIPS_Plan to the result of applying that action to it.
+  | `( $a:term >- $sp:term) =>
+    `(apply_action' $sp $a (by decide))
+    -- `((fun sp : STRIPS_Plan =>
+    --     apply_action' sp $a (by decide)))
+
+
 
 end STRIPS
