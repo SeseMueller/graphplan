@@ -1,4 +1,5 @@
 import Graphplan.Basic
+import Graphplan.FileParse
 
 -- We use the definition in the Basic module to construct the example
 -- for a STRIPS planning problem from the Wikipedia article on STRIPS.
@@ -90,3 +91,7 @@ def Example_Simulation_End_state_DSL : STRIPS_Plan :=
     >- Move A B
     >- MonkeyBox_STRIPS_Plan
   test
+
+
+def main : IO Unit := do
+  IO.println file_parse_result
