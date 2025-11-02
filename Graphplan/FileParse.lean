@@ -237,7 +237,7 @@ def parse_actions_conditions (actions : List (String × String × String)) :
 -- We also need a function to generate the lean function corresponsing to a single action.
 -- Note that a bound variable is expressed by having it names like a known prop.
 def action_to_lean_code (action : String × (List String × List String) × (List String × List String))
-(known_props : List String) (prop_name : String) : String :=
+(known_vars : List String) (var_name : String) (prop_name : String) : String :=
   -- The output should look like this:
 -- def ClimbUp (p : <PROPNAME>) : STRIPS_Operator MonkeyBoxProp where
 --   preconditions := {At p, BoxAt p, Low}
@@ -270,7 +270,7 @@ def action_to_lean_code (action : String × (List String × List String) × (Lis
       "{ " ++ String.intercalate ", " conds_code ++ " }"
 
   -- Now, crucially, we need to drop all known props from the free_params.
-  let free_params_filtered := free_params.filter fun p => ¬ known_props.contains p
+  let free_params_filtered := free_params.filter fun p => ¬ known_vars.contains p
 
   -- This ensures that only actual free variables are included as parameters.
 
@@ -282,7 +282,7 @@ def action_to_lean_code (action : String × (List String × List String) × (Lis
       if free_params_filtered.isEmpty then
         ""
       else
-      let param_list := free_params_filtered.map fun p => "(" ++ p ++ " : " ++ prop_name ++ ")"
+      let param_list := free_params_filtered.map fun p => "(" ++ p ++ " : " ++ var_name ++ ")"
       " " ++ String.intercalate " " param_list
     code := code ++ param_list
     code := code ++ " : STRIPS_Operator " ++ prop_name ++ " where\n"
@@ -354,7 +354,6 @@ def file_to_lean (file_content : String) (file_name : String) : String :=
   let var_type_name := file_name ++ "Var"
 
 
-
   -- We can start to generate the code here.
   let lean_code := Id.run do
 
@@ -375,12 +374,15 @@ def file_to_lean (file_content : String) (file_name : String) : String :=
     -- let props_with_params := extract_props_with_params (String.intercalate " " (initial_state ++ goal_state))
     let props_with_params := extract_props_with_params candidate_strings
 
+    -- Same for actions, just take their names.
+    let actions_with_params := extract_props_with_params (String.intercalate ", " (actions.map fun (name, _, _) => name))
+
     let mut props_code : String := "inductive " ++ prop_type_name ++ " \n"
     for (name, param_count) in props_with_params do
       -- props_code := props_code ++ "  | " ++ name ++ (if param_count > 0 then "(" ++ String.intercalate ", " (List.range param_count |>.map (fun i => "P" ++  (i.toDigits 10))) ++ ")" else "") ++ "\n"
       props_code := props_code ++ "  | " ++ name
       if param_count > 0 then
-        let param_list := List.range param_count |>.map (fun i => "p" ++  (i.repr))
+        let param_list := List.range param_count |>.map (fun i => "p" ++ (i.repr))
         props_code := props_code ++ "(" ++ String.intercalate " " param_list ++ " : " ++ var_type_name ++ ")"
       props_code := props_code ++ "\n"
     props_code := props_code ++ "  deriving DecidableEq, Repr, Fintype\n"
@@ -391,8 +393,58 @@ def file_to_lean (file_content : String) (file_name : String) : String :=
 
     -- Now, add all actions as functions.
     for action in parsed_actions do
-      let action_code := action_to_lean_code action var_names.toList var_type_name
+      let action_code := action_to_lean_code action var_names.toList var_type_name prop_type_name
       code := code ++ action_code ++ "\n\n"
+
+    -- Second last thing: the set of all actions.
+    -- Basically, take all Actions, and construct:
+    -- { e : STRIPS_Operator SimpleBlocksProp | ∃ p1 p2 : SimpleBlocksVar, m = Actionname p1 p2 }
+    let mapped_props := actions_with_params.map fun (name, param_count) =>
+      if param_count = 0 then
+        "{ m : STRIPS_Operator " ++ prop_type_name ++ " | m = " ++ name ++ " }"
+      else
+        let param_list := List.range param_count |>.map (fun i : ℕ => "p" ++ (i.repr))
+        "{ m : STRIPS_Operator " ++ prop_type_name ++ " | ∃ " ++
+        String.intercalate " " param_list ++ " : " ++ var_type_name ++
+        ", m = " ++ name ++ " " ++ String.intercalate " " param_list ++ " }"
+
+    -- Combine them all using ∪
+    let all_actions_set := String.intercalate " ∪\n  " mapped_props.toList
+
+    code := code ++ "def All_" ++ file_name ++ "_Actions : Set (STRIPS_Operator " ++ prop_type_name ++ ") :=\n  " ++ all_actions_set ++ "\n\n"
+
+    -- Lastly, the complete STRIPS planning problem.
+    -- We first need to construct the current_state as a list of props. and the goal_states as a set of list of props.
+
+    -- For that, we basically need to run parse_condition on each condition in the initial_state and goal_state.
+    let parsed_initial_state := (initial_state.map fun cond =>
+      let (name, params) := (parse_condition cond)
+      -- This should just be the name and parameters joined with spaces.
+      let params_code := String.intercalate " " params
+      if params.isEmpty then
+        name
+      else
+        name ++ " " ++ params_code
+      )
+    let parsed_goal_state := (goal_state.map fun cond =>
+      -- Same as above
+      let (name, params) := (parse_condition cond)
+      let params_code := String.intercalate " " params
+      if params.isEmpty then
+        name
+      else
+        name ++ " " ++ params_code
+      )
+    -- TODO!: As per the python standard, this STRIPS does not support multiple goal states.
+
+    -- Finally, construct the STRIPS_Plan definition.
+    code := code ++ "def " ++ file_name ++ "_STRIPS_Plan : STRIPS_Plan where\n"
+    code := code ++ "  Props := " ++ prop_type_name
+    code := code ++ "\n  prop_decidable := instDecidableEq" ++ prop_type_name ++ "\n" -- Auto-generated decidable instance
+    code := code ++ "  Actions := All_" ++ file_name ++ "_Actions\n"
+    code := code ++ "  current_state := { " ++ String.intercalate ", " parsed_initial_state ++ " }\n"
+    code := code ++ "  goal_states := {{ " ++ String.intercalate ", " parsed_goal_state ++ " }}\n"
+
     code
 
   lean_code

@@ -1,3 +1,18 @@
 /.lake
 
 .DS_Store
+
+# Testing file, for debugging purposes
+Testing.lean
+
+# Latex output file, may get too large
+*.pdf
+
+# Latex intermediate files
+*.aux
+*.bbl
+*.blg
+*.fls
+*.log
+*.fdb_latexmk
+*.synctex.gz

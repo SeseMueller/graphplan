@@ -1,0 +1,253 @@
+%\documentclass[12pt,twoside]{article}
+\documentclass[conference]{IEEEtran}  % this should work with your LaTeX installation; else download extra package (www.ctan.org/pkg/ieeetran) or remove IEEE usage below
+
+%%%%%%% Fill this out:
+\newcommand{\trtitle}{Solving STRIPS Problems with Graphplan}
+\newcommand{\titleshort}{Solving STRIPS with Graphplan} % title for header:
+\newcommand{\authorlastnames}{Willmann} % alphabetical for seminars
+\newcommand{\trcourse}{Knowledge Processing in Intelligent Systems: Practical Seminar}
+\newcommand{\trgroup}{Knowledge Technology, WTM}
+\newcommand{\truniversity}{Department of Informatics, University of Hamburg}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Languages:
+
+% If the thesis is written in English:
+\usepackage[english]{babel} 						
+\selectlanguage{english}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bind packages:
+\usepackage{lipsum}
+
+\usepackage{acronym}                    % Acronyms
+\usepackage{algorithmic}								% Algorithms and Pseudocode
+\usepackage{algorithm}									% Algorithms and Pseudocode
+\usepackage{amsfonts}                   % AMS Math Packet (Fonts)
+\usepackage{amsmath}                    % AMS Math Packet
+\usepackage{amssymb}                    % Additional mathematical symbols
+\usepackage{amsthm}
+\usepackage{booktabs}                   % Nicer tables
+%\usepackage[font=small,labelfont=bf]{caption} % Numbered captions for figures
+\usepackage{color}                      % Enables defining of colors via \definecolor
+\definecolor{uhhRed}{RGB}{254,0,0}		  % Official Uni Hamburg Red
+\definecolor{uhhGrey}{RGB}{122,122,120} % Official Uni Hamburg Grey
+\usepackage{fancybox}                   % Gleichungen einrahmen
+\usepackage{fancyhdr}										% Packet for nicer headers
+%\usepackage{fancyheadings}             % Nicer numbering of headlines
+
+%\usepackage[outer=3.35cm]{geometry} 	  % Type area (size, margins...) !!!Release version
+%\usepackage[outer=2.5cm]{geometry} 		% Type area (size, margins...) !!!Print version
+%\usepackage{geometry} 									% Type area (size, margins...) !!!Proofread version
+\usepackage{geometry} 	  % Type area (size, margins...) !!!Draft version
+\geometry{a4paper,body={7.0in,9.1in}}
+
+\usepackage{graphicx}                   % Inclusion of graphics
+%\usepackage{latexsym}                  % Special symbols
+\usepackage{longtable}									% Allow tables over several parges
+\usepackage{listings}                   % Nicer source code listings
+\usepackage{multicol}										% Content of a table over several columns
+\usepackage{multirow}										% Content of a table over several rows
+\usepackage{rotating}										% Alows to rotate text and objects
+\usepackage[hang]{subfigure}            % Allows to use multiple (partial) figures in a fig
+%\usepackage[font=footnotesize,labelfont=rm]{subfig}	% Pictures in a floating environment
+\usepackage{tabularx}										% Tables with fixed width but variable rows
+\usepackage{url,xspace,boxedminipage}   % Accurate display of URLs
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Configurationen:
+
+\hyphenation{whe-ther} 									% Manually use: "\-" in a word: Staats\-ver\-trag
+
+%\lstloadlanguages{C}                   % Set the default language for listings
+\DeclareGraphicsExtensions{.pdf,.svg,.jpg,.png,.eps} % first try pdf, then eps, png and jpg
+\graphicspath{{./src/}} 								% Path to a folder where all pictures are located
+\pagestyle{fancy} 											% Use nicer header and footer
+
+% Redefine the environments for floating objects:
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.9} 			  %Standard: 0.7
+\renewcommand{\bottomfraction}{0.5}		  %Standard: 0.3
+\renewcommand{\textfraction}{0.1}		  	%Standard: 0.2
+\renewcommand{\floatpagefraction}{0.8} 	%Standard: 0.5
+
+% Tables with a nicer padding:
+\renewcommand{\arraystretch}{1.2}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Additional 'theorem' and 'definition' blocks:
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+%\newtheorem{theorem}{Satz}[section]		% Wenn in Deutsch geschrieben wird.
+\newtheorem{axiom}{Axiom}[section] 	
+%\newtheorem{axiom}{Fakt}[chapter]			% Wenn in Deutsch geschrieben wird.
+%Usage:%\begin{axiom}[optional description]%Main part%\end{fakt}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
+%Additional types of axioms:
+\newtheorem{lemma}[axiom]{Lemma}
+\newtheorem{observation}[axiom]{Observation}
+
+%Additional types of definitions:
+\theoremstyle{remark}
+%\newtheorem{remark}[definition]{Bemerkung} % Wenn in Deutsch geschrieben wird.
+\newtheorem{remark}[definition]{Remark} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Provides TODOs within the margin:
+\newcommand{\TODO}[1]{\marginpar{\emph{\small{{\bf TODO: } #1}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Abbreviations and mathematical symbols
+\newcommand{\modd}{\text{ mod }}
+\newcommand{\RS}{\mathbb{R}}
+\newcommand{\NS}{\mathbb{N}}
+\newcommand{\ZS}{\mathbb{Z}}
+\newcommand{\dnormal}{\mathit{N}}
+\newcommand{\duniform}{\mathit{U}}
+
+\newcommand{\erdos}{Erd\H{o}s}
+\newcommand{\renyi}{-R\'{e}nyi}
+\usepackage{graphicx}
+
+% correct bad hyphenation here
+\hyphenation{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Document:
+\begin{document}
+
+%\title{\trtitle}
+\title{\trtitle\\[1.5ex]
+  \large \trcourse\\[0.5ex]
+  \trgroup\\[0.5ex]
+  \truniversity}
+
+
+\renewcommand{\headheight}{14.5pt}
+
+% Uncomment these lines if needed for header customization
+%\fancyhead{}
+%\fancyhead[LE]{  }
+\fancyhead[LO]{\slshape \authorlastnames}
+%\fancyhead[RE]{}
+\fancyhead[RO]{ \slshape \titleshort}
+
+% Author names and affiliations
+\author{
+  \IEEEauthorblockN{Sebastian Willmann}
+  \IEEEauthorblockA{\textit{sebastian.willmann@studium-hamburg.de}}
+}
+
+% \IEEEauthorblockN{
+%     John Adams,
+%     Thomas Jefferson,
+%     George Washington
+% }
+
+% \IEEEauthorblockA{
+%     \{adams, jefferson, washington\}@informatik.uni-hamburg.de\\
+% }
+
+% \begin{tabular}{c}% Centering the institution information
+% 	\trcourse\\
+% 	\trgroup, \truniversity
+% \end{tabular} 
+
+% make the title area
+\maketitle
+
+\begin{abstract}
+  Graphplan is an algorithm in the field of planning algorithms. 
+  It works on a STRIPS (Stanford Research Institute Problem Solver) problem; 
+  this problem format is introduced in section 1.
+  % \lipsum[2]
+
+\end{abstract}
+
+\IEEEpeerreviewmaketitle
+
+\section{STRIPS}
+\label{sec:strips}
+
+An introduction into the STRIPS problem format, with mathematical construction.
+
+\subsection{Example}
+\label{sec:strips_example}
+
+A small, but nontrivial example of a STRIPS problem. 
+The one on wikipedia (the monkey that moves the box to reach the bananas) is a bit too simple. 
+It should take more than four steps to solve the problem. 
+
+Optimally, it would also show the strengths of the Graphplan algorithm.
+
+\subsection{Applications}
+\label{sec:strips_applications}
+
+A very short section about which problems the STRIPS problem format could be used for 
+and why it can be especially useful (Reduction to P-Hard problems) % ? Graphplan claims to be P-Fast on a problem that is technically P-Space hard.
+
+\section{Linear Search}
+\label{sec:linear_search}
+
+A small section on linear search, the search algorithm implemented
+in the recommended Github repository. 
+Should definitely be using terminology from the lecture.
+(I'm pretty sure it's a breadth-first search, but I'm not sure; I haven't implemented it yet).
+
+Also maybe a few notes on the implementation in LEAN. 
+
+\subsection{Applying Linear Search}
+\label{sec:linear_search_application}
+
+A small section on applying linear search to the sample problem from
+the section on STRIPS. Should get the reader to understand applied 
+STRIPS a bit better and prepare for the Graphplan explaination.
+
+
+\section{Graphplan}
+\label{sec:graphplan}
+
+A short introduction of Graphplan, with main idea and angle of attack.
+
+\subsection{Functionalilty; Algorithm}
+\label{sec:graphplan_functionality}
+
+A longer section on how graphplan actually works, very mathematical. 
+Probably even the mathematical description of the algorithm.
+Again, with terminology from the lecture.
+
+
+\subsection{Applying Graphplan}
+\label{sec:graphplan_applying}
+
+Applycation of graphplan to the same problem. 
+Best if the visualization/problem shows the strengths of graphplan.
+
+\section{Implementation in LEAN}
+\label{sec:implementation}
+
+A section (I don't yet know how long) about implementing STRIPS in Lean. 
+Details, snags I've hit, performance, etc. 
+
+Should mention the DSL for interactive solving. 
+
+\subsection{Solving with LLM}
+\label{sec:implementation_llm}
+
+If wanted/necessary (since the topic list mentioned it) , a section on
+getting an LLM to try to solve the problem, probably using the DSL for simplicity. 
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+Conclusion, if neccessary. 
+
+% insert your bibliographic references into the bib.bib file
+% \bibliographystyle{plain}
+% \addcontentsline{toc}{section}{Bibliography}% Add to the TOC
+% \bibliography{bib}
+\end{document}
