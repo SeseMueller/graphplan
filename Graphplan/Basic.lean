@@ -28,7 +28,7 @@ structure STRIPS_Plan where
   prop_decidable : DecidableEq Props
   -- prop_set_decidable : DecidableEq (Finset Props)
   -- The actions that can be performed in the planning problem
-  Actions : Set (STRIPS_Operator Props)
+  Actions : Array (STRIPS_Operator Props)
   -- The current state of the planning problem
   current_state : List Props
   -- The valid goal states of the planning problem

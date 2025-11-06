@@ -33,4 +33,9 @@ structure Solution (P : STRIPS_Plan) where
   is_valid : is_valid_plan P actions = true
 
 
+-- A helper function that returns all possible actions from the current state.
+def possible_actions {P : STRIPS_Plan} : Array (STRIPS_Operator P.Props) :=
+  P.Actions.filter (fun a => is_applicable a)
+
+
 end Search

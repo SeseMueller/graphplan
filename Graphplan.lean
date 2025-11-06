@@ -11,12 +11,14 @@ inductive Position
   | B
   | C
   deriving DecidableEq, Repr, Fintype
+def Position.all : List Position := [Position.A, Position.B, Position.C]
 
 -- Whether the monkey is currently high or low
 inductive Height
   | High
   | Low
   deriving DecidableEq, Repr, Fintype
+def Height.all : List Height := [Height.High, Height.Low]
 
 -- The Enum of propositional variables
 inductive MonkeyBoxProp
@@ -65,14 +67,41 @@ def TakeBananas (p : Position) : STRIPS_Operator MonkeyBoxProp where
   del_effects := {}
 
 
--- Because the actions have free variables (the positions),
--- we need to instantiate them for all possible values.
-def All_MonkeyBox_Actions : Set (STRIPS_Operator MonkeyBoxProp) :=
-  { m : STRIPS_Operator MonkeyBoxProp | ∃ p1 p2 : Position, m = Move p1 p2 } ∪
-  { m : STRIPS_Operator MonkeyBoxProp | ∃ p : Position, m = ClimbUp p } ∪
-  { m : STRIPS_Operator MonkeyBoxProp | ∃ p : Position, m = ClimbDown p } ∪
-  { m : STRIPS_Operator MonkeyBoxProp | ∃ p1 p2 : Position, m = MoveBox p1 p2 } ∪
-  { m : STRIPS_Operator MonkeyBoxProp | ∃ p : Position, m = TakeBananas p }
+-- -- Because the actions have free variables (the positions),
+-- -- we need to instantiate them for all possible values.
+-- def All_MonkeyBox_Actions :  (STRIPS_Operator MonkeyBoxProp) :=
+--   { m : STRIPS_Operator MonkeyBoxProp | ∃ p1 p2 : Position, m = Move p1 p2 } ∪
+--   { m : STRIPS_Operator MonkeyBoxProp | ∃ p : Position, m = ClimbUp p } ∪
+--   { m : STRIPS_Operator MonkeyBoxProp | ∃ p : Position, m = ClimbDown p } ∪
+--   { m : STRIPS_Operator MonkeyBoxProp | ∃ p1 p2 : Position, m = MoveBox p1 p2 } ∪
+--   { m : STRIPS_Operator MonkeyBoxProp | ∃ p : Position, m = TakeBananas p }
+
+-- The definition changed, we need it as an Array now (Set membership is not decidable)
+-- So to make it easier, we just construct the array directly.
+def All_MonkeyBox_Actions : Array (STRIPS_Operator MonkeyBoxProp) :=
+  let out_array := Id.run do
+    let mut arr := #[]
+    -- Add all Move actions
+    for p1 in Position.all do
+      for p2 in Position.all do
+        if p1 ≠ p2 then
+          arr := arr.push (Move p1 p2)
+    -- Add all ClimbUp actions
+    for p in Position.all do
+      arr := arr.push (ClimbUp p)
+    -- Add all ClimbDown actions
+    for p in Position.all do
+      arr := arr.push (ClimbDown p)
+    -- Add all MoveBox actions
+    for p1 in Position.all do
+      for p2 in Position.all do
+        if p1 ≠ p2 then
+          arr := arr.push (MoveBox p1 p2)
+    -- Add all TakeBananas actions
+    for p in Position.all do
+      arr := arr.push (TakeBananas p)
+    arr
+  out_array
 
 
 -- The complete STRIPS planning problem for the monkey and bananas example.
