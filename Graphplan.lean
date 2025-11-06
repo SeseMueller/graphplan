@@ -1,5 +1,6 @@
 import Graphplan.Basic
 import Graphplan.FileParse
+import Graphplan.Search.Basic
 
 -- We use the definition in the Basic module to construct the example
 -- for a STRIPS planning problem from the Wikipedia article on STRIPS.
@@ -95,3 +96,14 @@ def Example_Simulation_End_state_DSL : STRIPS_Plan :=
 
 def main : IO Unit := do
   IO.println file_parse_result
+
+
+-- The list of actions defined above
+def solution_actions : List (STRIPS_Operator MonkeyBoxProp) :=
+  [ Move A B,
+    MoveBox B C,
+    ClimbUp C,
+    TakeBananas C
+  ]
+
+#eval Search.is_valid_plan MonkeyBox_STRIPS_Plan solution_actions

@@ -66,7 +66,7 @@ def apply_action_if_applicable (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
   if is_applicable a then
     apply_action a
   else
-    sp.current_state
+    sp.current_state -- Does nothing if not applicable
 
 -- Applies the action, given a proof that it is applicable
 def apply_action_with_proof (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
@@ -78,6 +78,11 @@ def apply_action' (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
     (h : is_applicable a) : STRIPS_Plan :=
   { sp with current_state := apply_action_with_proof sp a h}
   -- Wait, this is a monad, right?
+
+-- Applied the action if applicable, returning the new state
+def apply_action_if_applicable' (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props) : STRIPS_Plan :=
+  let new_list := apply_action_if_applicable sp a
+  { sp with current_state := new_list }
 
 -- DSL syntax for applying an action to a STRIPS plan
 syntax:10 (name := applyMove) term " >- " term : term
