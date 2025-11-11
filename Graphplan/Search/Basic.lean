@@ -2,6 +2,7 @@
 -- The implementations will be in separate files.
 
 import Graphplan.Basic
+import Std.Data.HashMap
 
 open STRIPS
 
@@ -36,6 +37,25 @@ structure Solution (P : STRIPS_Plan) where
 -- A helper function that returns all possible actions from the current state.
 def possible_actions {P : STRIPS_Plan} : Array (STRIPS_Operator P.Props) :=
   P.Actions.filter (fun a => is_applicable a)
+
+
+-- A possible way to represent the search state.
+structure SearchState where
+  -- The main plan of the search
+  plan : STRIPS_Plan
+  -- The list of next steps to consider
+  steps_to_consider : List (List plan.Props) -- Note that List is a linked list
+  -- to allow for efficient removal of the head action.
+
+  -- The fact that a list of props (a step) is decidable for equality
+  step_decidable : DecidableEq (List plan.Props) := by exact?
+  -- The fact that the List of steps is BEq, that is, it can be compared for equality
+  steps_beq : BEq (List plan.Props) := instBEqOfDecidableEq
+  -- The fact that a step is hashable
+  step_hashable : Hashable (List plan.Props) := by exact?
+
+  -- The hashmap that maps all known states to their previous state and the action that led to them
+  known_steps : Std.HashMap (List plan.Props) ((List plan.Props) × (STRIPS_Operator plan.Props))
 
 
 end Search
