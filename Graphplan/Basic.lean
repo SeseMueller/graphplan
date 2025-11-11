@@ -110,7 +110,7 @@ def apply_action_if_applicable' (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props
   { sp with current_state := new_list }
 
 -- DSL syntax for applying an action to a STRIPS plan
-syntax:10 (name := applyMove) term " >- " term : term
+syntax:10 (name := applyMove) term:10 " >- " term:11 : term
 macro_rules
   -- This is a bit more complicated, because we basically want opposite parsing order
   -- than is given. In the example "start_state >- Move A B >- MoveBox B C", the second
@@ -119,7 +119,7 @@ macro_rules
   -- So we instead only take the term to the right of ">-", and construct a function
   -- that maps a STRIPS_Plan to the result of applying that action to it.
   | `( $a:term >- $sp:term) =>
-    `(apply_action' $sp $a (by decide))
+    `(apply_action' $a $sp (by decide))
     -- `((fun sp : STRIPS_Plan =>
     --     apply_action' sp $a (by decide)))
 

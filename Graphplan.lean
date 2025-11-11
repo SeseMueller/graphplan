@@ -111,15 +111,37 @@ def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
   Actions := All_MonkeyBox_Actions
   current_state := {At A, BoxAt B, BananaAt C, Level Low}
   goal_states := {{HasBanana}}
+  prop_hashable := by {
+    refine { hash := ?_ }
+    intro p
+    match p with
+    | At A => exact 1
+    | At B => exact 2
+    | At C => exact 3
+    | BoxAt A => exact 4
+    | BoxAt B => exact 5
+    | BoxAt C => exact 6
+    | BananaAt A => exact 7
+    | BananaAt B => exact 8
+    | BananaAt C => exact 9
+    | Level Low => exact 10
+    | Level High => exact 11
+    | HasBanana => exact 12
+  }
 
 -- The same example, but using the DSL operator `>-`
 def Example_Simulation_End_state_DSL : STRIPS_Plan :=
   let test :=
-    TakeBananas C
-    >- ClimbUp C
-    >- MoveBox B C
+    -- TakeBananas C
+    -- >- ClimbUp C
+    -- >- MoveBox B C
+    -- >- Move A B
+    -- >- MonkeyBox_STRIPS_Plan
+    MonkeyBox_STRIPS_Plan
     >- Move A B
-    >- MonkeyBox_STRIPS_Plan
+    >- MoveBox B C
+    >- ClimbUp C
+    >- TakeBananas C
   test
 
 
