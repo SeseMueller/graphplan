@@ -16,7 +16,7 @@ structure STRIPS_Operator (Props : Type) where
   add_effects : List Props
   -- The effects that will be removed from the state after applying the operator
   del_effects : List Props
-  deriving DecidableEq
+  deriving DecidableEq, Repr
 
 -- We define a STRIPS planning problem as a structure
 -- consisting of a set of propositions, a set of actions,
@@ -28,7 +28,7 @@ structure STRIPS_Plan where
   -- We don't need Fintype for now, but we do need hashable for HashMap for efficient serach.
   prop_hashable : Hashable Props
   prop_decidable : DecidableEq Props
-  -- prop_set_decidable : DecidableEq (Finset Props)
+  prop_repr : Repr Props -- For debugging purposes
   -- The actions that can be performed in the planning problem
   Actions : Array (STRIPS_Operator Props)
   -- The current state of the planning problem

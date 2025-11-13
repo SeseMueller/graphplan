@@ -16,11 +16,13 @@ def find_in_hashmap? {K V : Type} [BEq K] [Hashable K]
       return  v
   none
 
-def linear_search (initial_search_state : Search.SearchState) : Option (Search.Solution initial_search_state.plan) := do
+def linear_search (initial_search_state : Search.SearchState) :
+    Option (Search.partial_Solution initial_search_state.plan) := do
   let _ := initial_search_state.step_decidable
   let _ := initial_search_state.steps_beq
   let _ := initial_search_state.step_hashable
   let _ := initial_search_state.plan.prop_decidable
+  let _ := initial_search_state.plan.prop_repr
 
   -- Initialize the search with the initial state
   let mut known_steps := initial_search_state.known_steps
@@ -41,13 +43,22 @@ def linear_search (initial_search_state : Search.SearchState) : Option (Search.S
   -- add the explored step to known states,
   repeat
     -- If the list can be expressed as head :: tail, proceed
+    -- dbg_trace "Steps to explore: {steps_to_explore.length}"
+
     match steps_to_explore with
     | [] =>
+      -- dbg_trace "No more steps to explore"
+      -- dbg_trace "Known steps: {known_steps.size}"
       none
     | cur_step :: tail =>
       -- Update the list of steps to explore
       steps_to_explore := tail
 
+      -- debug repr for the current step
+
+
+      -- let repr_cur_step := repr cur_step
+      -- dbg_trace "Exploring step with props: {repr_cur_step}"
 
       -- Synthesize decidablity for the goal check
       let _ : Decidable (cur_step ∈ initial_search_state.plan.goal_states) := by
@@ -55,14 +66,16 @@ def linear_search (initial_search_state : Search.SearchState) : Option (Search.S
         let _ : DecidableEq (List initial_search_state.plan.Props) := by infer_instance
         let _ : BEq (List initial_search_state.plan.Props) := instBEqOfDecidableEq
         infer_instance
-      if is_goal: cur_step ∈ initial_search_state.plan.goal_states then
+      if is_goal: Search.is_goal_reached initial_search_state cur_step then
         -- Reconstruct the solution from known states
         let mut actions : List (STRIPS.STRIPS_Operator initial_search_state.plan.Props) := []
         let mut state := cur_step
 
         while state ≠ initial_search_state.plan.current_state do
           match find_in_hashmap? known_steps state with
-          | none => none -- This should not happen
+          | none =>
+            dbg_trace "Error: state not found in known_steps during solution reconstruction"
+            none -- This should not happen
           | some prev_states =>
             -- We add the action that led to this state
             let (prev_state, action) := prev_states
@@ -70,24 +83,26 @@ def linear_search (initial_search_state : Search.SearchState) : Option (Search.S
             state := prev_state
 
         -- Return the solution
-        return { actions := actions.reverse, is_valid := (by
-          unfold Search.is_valid_plan
-          -- simp only [List.pure_def, List.bind_eq_flatMap, List.flatMap_cons, List.flatMap_nil,
-          --   List.append_nil, List.flatMap_id', List.contains_eq_mem, List.mem_flatten,
-          --   List.any_eq_true, List.all_eq_true, decide_eq_true_eq]
-          -- use cur_step
-          -- constructor
-          -- · exact is_goal
-          -- · intro one_prop h_one_prop
-          simp only
-          unfold STRIPS.apply_action_if_applicable -- Hm, might need to add the proof that the action took place
-          -- and moved from the previous state to the current state in the known_steps map.
+        return { actions := actions }
+        -- , is_valid := (by
+        --   unfold Search.is_valid_plan
+        --   -- simp only [List.pure_def, List.bind_eq_flatMap, List.flatMap_cons, List.flatMap_nil,
+        --   --   List.append_nil, List.flatMap_id', List.contains_eq_mem, List.mem_flatten,
+        --   --   List.any_eq_true, List.all_eq_true, decide_eq_true_eq]
+        --   -- use cur_step
+        --   -- constructor
+        --   -- · exact is_goal
+        --   -- · intro one_prop h_one_prop
+        --   simp only
+        --   unfold STRIPS.apply_action_if_applicable
+        --   -- Hm, might need to add the proof that the action took place
+        --   -- and moved from the previous state to the current state in the known_steps map.
 
-          -- Thinking about it even more, I should prefer storing the entire list of actions
-          -- that led to the state, instead of just the previous state and the action.
-          -- This way, I cam store the proof of the entire list of actions leading to the goal.
+        --   -- Thinking about it even more, I should prefer storing the entire list of actions
+        --   -- that led to the state, instead of just the previous state and the action.
+        --   -- This way, I cam store the proof of the entire list of actions leading to the goal.
 
-        ) }
+        -- ) }
         -- TODO: Prove validity of the plan
 
       -- The current step does not achieve the goal, generate new states
@@ -106,4 +121,6 @@ def linear_search (initial_search_state : Search.SearchState) : Option (Search.S
             else  continue
 
   -- If no solution is found, return none
+  -- dbg_trace "No solution found"
+  -- dbg_trace "Known steps: {known_steps.size}"
   none

@@ -1,6 +1,7 @@
 import Graphplan.Basic
 import Graphplan.FileParse
 import Graphplan.Search.Basic
+import Graphplan.Search.Linear
 
 -- We use the definition in the Basic module to construct the example
 -- for a STRIPS planning problem from the Wikipedia article on STRIPS.
@@ -78,37 +79,42 @@ def TakeBananas (p : Position) : STRIPS_Operator MonkeyBoxProp where
 
 -- The definition changed, we need it as an Array now (Set membership is not decidable)
 -- So to make it easier, we just construct the array directly.
-def All_MonkeyBox_Actions : Array (STRIPS_Operator MonkeyBoxProp) :=
+def All_MonkeyBox_Actions : Array (STRIPS_Operator MonkeyBoxProp × String) :=
   let out_array := Id.run do
     let mut arr := #[]
     -- Add all Move actions
     for p1 in Position.all do
       for p2 in Position.all do
         if p1 ≠ p2 then
-          arr := arr.push (Move p1 p2)
+          arr := arr.push (Move p1 p2, s!"Move {repr p1} {repr p2}")
     -- Add all ClimbUp actions
     for p in Position.all do
-      arr := arr.push (ClimbUp p)
+      arr := arr.push (ClimbUp p, s!"ClimbUp {repr p}")
     -- Add all ClimbDown actions
     for p in Position.all do
-      arr := arr.push (ClimbDown p)
+      arr := arr.push (ClimbDown p, s!"ClimbDown {repr p}")
     -- Add all MoveBox actions
     for p1 in Position.all do
       for p2 in Position.all do
         if p1 ≠ p2 then
-          arr := arr.push (MoveBox p1 p2)
+          arr := arr.push (MoveBox p1 p2, s!"MoveBox {repr p1} {repr p2}")
     -- Add all TakeBananas actions
     for p in Position.all do
-      arr := arr.push (TakeBananas p)
+      arr := arr.push (TakeBananas p, s!"TakeBananas {repr p}")
     arr
   out_array
 
+-- Returns the canonical name of an action
+def action_name (op : STRIPS_Operator MonkeyBoxProp) : Option String :=
+  let found := All_MonkeyBox_Actions.find? (fun x => x.fst = op)
+  found.map (fun x => x.snd)
 
 -- The complete STRIPS planning problem for the monkey and bananas example.
 def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
   Props := MonkeyBoxProp
   prop_decidable := instDecidableEqMonkeyBoxProp
-  Actions := All_MonkeyBox_Actions
+  prop_repr := instReprMonkeyBoxProp
+  Actions := All_MonkeyBox_Actions.map (fun x => x.fst)
   current_state := {At A, BoxAt B, BananaAt C, Level Low}
   goal_states := {{HasBanana}}
   prop_hashable := by {
@@ -158,3 +164,23 @@ def solution_actions : List (STRIPS_Operator MonkeyBoxProp) :=
   ]
 
 #eval Search.is_valid_plan MonkeyBox_STRIPS_Plan solution_actions
+
+-- Apply the linear search to the MonkeyBox_STRIPS_Plan
+def initial_search_state := Search.mk_search_state MonkeyBox_STRIPS_Plan
+
+def solution := linear_search initial_search_state
+
+def solution_repr :=
+  let _ := initial_search_state.plan.prop_repr
+  let op_rep : Repr (STRIPS_Operator initial_search_state.plan.Props) := by infer_instance
+  let _ : Repr (List (STRIPS_Operator initial_search_state.plan.Props)) := instReprList
+  solution.map (fun sol => sol.actions.map (fun op => repr op))
+
+def solution_names :=
+  solution.map (fun sol =>
+    sol.actions.map (fun op =>
+      match action_name op with
+      | some name => name
+      | none => "Unknown Action"))
+
+#eval solution_names
