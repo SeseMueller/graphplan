@@ -116,7 +116,12 @@ def linear_search (initial_search_state : Search.SearchState) :
             -- If the new state is not already known, add it to known states and steps to explore
             if ¬ known_steps.contains new_state then
               known_steps := known_steps.insert new_state (cur_step, action)
-              steps_to_explore := new_state :: steps_to_explore
+
+              -- steps_to_explore := new_state :: steps_to_explore
+              -- The new state needs to be added to the back, not the front, to ensure BFS behavior
+              steps_to_explore := steps_to_explore ++ [new_state]
+
+
             -- If the new state is already known, do nothing
             else  continue
 
