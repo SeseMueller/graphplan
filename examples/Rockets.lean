@@ -25,8 +25,12 @@ inductive Cargo
   | Jason
   | Pencil
   | Paper
+  | Desk
+  | Chair
+  | Laptop
   deriving DecidableEq, Repr, Fintype, Hashable
-def Cargo.all : List Cargo := [Cargo.Alex, Cargo.Jason, Cargo.Pencil, Cargo.Paper]
+def Cargo.all : List Cargo :=
+  [Cargo.Alex, Cargo.Jason, Cargo.Pencil, Cargo.Paper, Cargo.Desk, Cargo.Chair, Cargo.Laptop]
 
 
 inductive RocketVar
@@ -111,6 +115,9 @@ def Rocket_STRIPS_Plan : STRIPS_Plan where
         At (RocketVar.Cargo Cargo.Jason) Place.London,
         At (RocketVar.Cargo Cargo.Pencil) Place.London,
         At (RocketVar.Cargo Cargo.Paper) Place.London,
+        At (RocketVar.Cargo Cargo.Desk) Place.London,
+        At (RocketVar.Cargo Cargo.Chair) Place.London,
+        At (RocketVar.Cargo Cargo.Laptop) Place.London,
         At (RocketVar.Rocket Rocket.Rocket1) Place.London,
         At (RocketVar.Rocket Rocket.Rocket2) Place.London,
         HasFuel Rocket.Rocket1,
@@ -121,8 +128,12 @@ def Rocket_STRIPS_Plan : STRIPS_Plan where
       [ {
         At (RocketVar.Cargo Cargo.Alex) Place.Paris,
         At (RocketVar.Cargo Cargo.Jason) Place.JFK ,
-        At (RocketVar.Cargo Cargo.Pencil) Place.Paris ,
-        At (RocketVar.Cargo Cargo.Paper) Place.JFK
+        -- At (RocketVar.Cargo Cargo.Pencil) Place.Paris ,
+        -- At (RocketVar.Cargo Cargo.Paper) Place.JFK,
+        -- At (RocketVar.Cargo Cargo.Desk) Place.Paris,
+        -- At (RocketVar.Cargo Cargo.Chair) Place.JFK,
+        At (RocketVar.Cargo Cargo.Laptop) Place.Paris
+
         } ]
 
 -- Returns the canonical name of an action
