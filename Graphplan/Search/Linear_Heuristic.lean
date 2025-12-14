@@ -20,32 +20,105 @@ def state_heuristic (search_state : Search.SearchState)
   -- For now, take the maximum length as the heuristic value
   goal_lengths.foldl Nat.max 0
 
--- Insert a step into a queue ordered by descending `state_heuristic`.
--- If heuristic values are identical, we insert *after* existing equal-valued steps,
--- preserving breadth-first (FIFO) behavior within each heuristic bucket.
+abbrev Step (s : Search.SearchState) := List s.plan.Props
+
+-- Heuristic buckets: each bucket stores a FIFO queue of steps (as an Array)
+-- together with the bucket's heuristic value.
+-- Invariant: buckets are ordered by descending heuristic value.
+abbrev HeuristicBuckets (s : Search.SearchState) := Array (Array (Step s) × Nat)
+
+-- Drop the first element of an array.
+-- (Used to pop from the front of a FIFO queue implemented with an Array.)
+def array_drop_first {α : Type} (a : Array α) : Array α :=
+  Id.run do
+    let mut out : Array α := #[]
+    let mut first := true
+    for el in a do
+      if first then
+        first := false
+      else
+        out := out.push el
+    return out
+
+-- Insert an element into an array at a given index.
+-- If the index is out of bounds, inserts at the end.
+def array_insert_at {α : Type} (a : Array α) (idx : Nat) (x : α) : Array α :=
+  Id.run do
+    let mut out : Array α := #[]
+    let mut inserted := false
+    let mut i := 0
+    for el in a do
+      if (i == idx) && (inserted == false) then
+        out := out.push x
+        inserted := true
+      out := out.push el
+      i := i + 1
+    if inserted == false then
+      out := out.push x
+    return out
+
+-- Insert a step into the heuristic buckets.
+-- - Buckets are kept in descending heuristic order.
+-- - Within a bucket of equal heuristic, we append to preserve FIFO.
 def insert_step_by_heuristic
     (search_state : Search.SearchState)
-    (step : List search_state.plan.Props)
-    (queue : List (List search_state.plan.Props)) : List (List search_state.plan.Props) :=
+    (step : Step search_state)
+    (buckets : HeuristicBuckets search_state) : HeuristicBuckets search_state :=
   let hStep := state_heuristic search_state step
-  match queue with
-  | [] => [step]
-  | qHead :: qTail =>
-      let hHead := state_heuristic search_state qHead
-      if hHead < hStep then
-        step :: qHead :: qTail
-      else
-        qHead :: insert_step_by_heuristic search_state step qTail
+  Id.run do
+    let mut i := 0
+    let mut bs := buckets
 
--- TODO: Instead of building a new list every time,
--- use a list of list, where every sublist has the same heuristic value.
--- Then we don't need to rebuild the entire list on every insertion.
+    while i < bs.size do
+      match bs[i]? with
+      | none =>
+        -- Should not happen due to the loop condition, but keeps the function total.
+        i := bs.size
+      | some (bucketSteps, hBucket) =>
+        if hBucket == hStep then
+          bs := bs.set! i (bucketSteps.push step, hBucket)
+          return bs
+        else if hBucket < hStep then
+          bs := array_insert_at bs i (#[step], hStep)
+          return bs
+        else
+          i := i + 1
 
--- Stable sort (via repeated stable insertion) by descending `state_heuristic`.
-def sort_steps_by_heuristic
+    -- No matching bucket and no smaller bucket found: append at the end.
+    return bs.push (#[step], hStep)
+
+-- Convert an initial list of steps into heuristic buckets.
+def bucketize_steps
     (search_state : Search.SearchState)
-    (steps : List (List search_state.plan.Props)) : List (List search_state.plan.Props) :=
-  steps.foldl (fun acc s => insert_step_by_heuristic search_state s acc) []
+    (steps : List (Step search_state)) : HeuristicBuckets search_state :=
+  steps.foldl (fun acc s => insert_step_by_heuristic search_state s acc) #[]
+
+-- Pop the next step to explore, prioritizing higher-heuristic buckets.
+-- Preserves FIFO order within each bucket.
+def pop_next_step?
+    (search_state : Search.SearchState)
+    (buckets : HeuristicBuckets search_state)
+    : Option (Step search_state × HeuristicBuckets search_state) :=
+  Id.run do
+    let mut bs := buckets
+    repeat
+      match bs[0]? with
+      | none =>
+        return none
+      | some (bucketSteps, hBucket) =>
+        match bucketSteps[0]? with
+        | none =>
+          -- Empty bucket: drop it and continue.
+          bs := array_drop_first bs
+        | some step =>
+          let rest := array_drop_first bucketSteps
+          if rest.size == 0 then
+            bs := array_drop_first bs
+          else
+            bs := bs.set! 0 (rest, hBucket)
+          return some (step, bs)
+    -- If we reach here, all buckets were empty.
+    return none
 
 def heuristic_search (initial_search_state : Search.SearchState) :
     Option (Search.partial_Solution initial_search_state.plan) := do
@@ -58,9 +131,10 @@ def heuristic_search (initial_search_state : Search.SearchState) :
   -- Initialize the search with the initial state
   let mut known_steps := initial_search_state.known_steps
 
-  -- The list of steps to explore
-  let mut steps_to_explore :=
-    sort_steps_by_heuristic initial_search_state initial_search_state.steps_to_consider
+  -- The heuristic buckets of steps to explore.
+  -- Higher heuristic buckets are explored first; within a bucket we preserve FIFO order.
+  let mut steps_to_explore : HeuristicBuckets initial_search_state :=
+    bucketize_steps initial_search_state initial_search_state.steps_to_consider
 
   -- Main search loop, iterates until a solution is found or no more states to explore
   -- Loop sctructure: take a step from the list, check whether it achieves the goal,
@@ -70,12 +144,12 @@ def heuristic_search (initial_search_state : Search.SearchState) :
   repeat
     -- If the list can be expressed as head :: tail, proceed
 
-    match steps_to_explore with
-    | [] =>
+    match pop_next_step? initial_search_state steps_to_explore with
+    | none =>
       none
-    | cur_step :: tail =>
-      -- Update the list of steps to explore
-      steps_to_explore := tail
+    | some (cur_step, tailBuckets) =>
+      -- Update the buckets of steps to explore
+      steps_to_explore := tailBuckets
 
       -- Synthesize decidablity for the goal check
       let _ : Decidable (cur_step ∈ initial_search_state.plan.goal_states) := by
