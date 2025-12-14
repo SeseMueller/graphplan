@@ -2,6 +2,7 @@ import Graphplan.Basic
 import Graphplan.FileParse
 import Graphplan.Search.Basic
 import Graphplan.Search.Linear
+import Graphplan.Search.Graphplan
 
 -- We use the definition in the Basic module to construct the example
 -- for a STRIPS planning problem from the Wikipedia article on STRIPS.
@@ -168,13 +169,19 @@ def solution_actions : List (STRIPS_Operator MonkeyBoxProp) :=
 -- Apply the linear search to the MonkeyBox_STRIPS_Plan
 def initial_search_state := Search.mk_search_state MonkeyBox_STRIPS_Plan
 
-def solution := linear_search initial_search_state
+-- def solution := linear_search initial_search_state
+def solution := graphplan_search initial_search_state
 
 def solution_repr :=
   let _ := initial_search_state.plan.prop_repr
   let op_rep : Repr (STRIPS_Operator initial_search_state.plan.Props) := by infer_instance
   let _ : Repr (List (STRIPS_Operator initial_search_state.plan.Props)) := instReprList
   solution.map (fun sol => sol.actions.map (fun op => repr op))
+
+def new_solution_actions :=
+  solution.map (fun sol => sol.actions)
+
+#eval Search.is_valid_plan MonkeyBox_STRIPS_Plan new_solution_actions.get!
 
 def solution_names :=
   solution.map (fun sol =>
