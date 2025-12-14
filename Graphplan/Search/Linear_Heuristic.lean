@@ -6,8 +6,48 @@ import Graphplan.Search.Basic
 -- by applying possible actions to the current state, updating the known states, and checking
 -- for goal satisfaction.
 
+-- Heuristic to sort the states to explore by.
+-- Currently, it is just the number of satisfied goal propositions.
+def state_heuristic (search_state : Search.SearchState)
+(state : List search_state.plan.Props) : Nat :=
+  let _ := search_state.plan.prop_decidable -- So the Props can be compared
+  let filtered_goals := search_state.plan.goal_states.map
+    (fun goal => goal.filter (fun p => state.contains p))
+  -- The filteres goals are all goals with only the propositions
+  -- that are satisfied in the current state
+  -- Convert to a list of their lengths
+  let goal_lengths := filtered_goals.map (fun g => g.length)
+  -- For now, take the maximum length as the heuristic value
+  goal_lengths.foldl Nat.max 0
 
-def linear_search (initial_search_state : Search.SearchState) :
+-- Insert a step into a queue ordered by descending `state_heuristic`.
+-- If heuristic values are identical, we insert *after* existing equal-valued steps,
+-- preserving breadth-first (FIFO) behavior within each heuristic bucket.
+def insert_step_by_heuristic
+    (search_state : Search.SearchState)
+    (step : List search_state.plan.Props)
+    (queue : List (List search_state.plan.Props)) : List (List search_state.plan.Props) :=
+  let hStep := state_heuristic search_state step
+  match queue with
+  | [] => [step]
+  | qHead :: qTail =>
+      let hHead := state_heuristic search_state qHead
+      if hHead < hStep then
+        step :: qHead :: qTail
+      else
+        qHead :: insert_step_by_heuristic search_state step qTail
+
+-- TODO: Instead of building a new list every time,
+-- use a list of list, where every sublist has the same heuristic value.
+-- Then we don't need to rebuild the entire list on every insertion.
+
+-- Stable sort (via repeated stable insertion) by descending `state_heuristic`.
+def sort_steps_by_heuristic
+    (search_state : Search.SearchState)
+    (steps : List (List search_state.plan.Props)) : List (List search_state.plan.Props) :=
+  steps.foldl (fun acc s => insert_step_by_heuristic search_state s acc) []
+
+def heuristic_search (initial_search_state : Search.SearchState) :
     Option (Search.partial_Solution initial_search_state.plan) := do
   let _ := initial_search_state.step_decidable
   let _ := initial_search_state.steps_beq
@@ -18,14 +58,9 @@ def linear_search (initial_search_state : Search.SearchState) :
   -- Initialize the search with the initial state
   let mut known_steps := initial_search_state.known_steps
 
-  -- -- Add the initial state to the known states
-  -- known_steps := known_steps.insert
-  --   initial_search_state.plan.current_state
-  --   []
-  -- TODO: Does it work without this?
-
   -- The list of steps to explore
-  let mut steps_to_explore := initial_search_state.steps_to_consider
+  let mut steps_to_explore :=
+    sort_steps_by_heuristic initial_search_state initial_search_state.steps_to_consider
 
   -- Main search loop, iterates until a solution is found or no more states to explore
   -- Loop sctructure: take a step from the list, check whether it achieves the goal,
@@ -34,22 +69,13 @@ def linear_search (initial_search_state : Search.SearchState) :
   -- add the explored step to known states,
   repeat
     -- If the list can be expressed as head :: tail, proceed
-    -- dbg_trace "Steps to explore: {steps_to_explore.length}"
 
     match steps_to_explore with
     | [] =>
-      -- dbg_trace "No more steps to explore"
-      -- dbg_trace "Known steps: {known_steps.size}"
       none
     | cur_step :: tail =>
       -- Update the list of steps to explore
       steps_to_explore := tail
-
-      -- debug repr for the current step
-
-
-      -- let repr_cur_step := repr cur_step
-      -- dbg_trace "Exploring step with props: {repr_cur_step}"
 
       -- Synthesize decidablity for the goal check
       let _ : Decidable (cur_step ∈ initial_search_state.plan.goal_states) := by
@@ -75,26 +101,8 @@ def linear_search (initial_search_state : Search.SearchState) :
 
         -- Return the solution
         return { actions := actions }
-        -- , is_valid := (by
-        --   unfold Search.is_valid_plan
-        --   -- simp only [List.pure_def, List.bind_eq_flatMap, List.flatMap_cons, List.flatMap_nil,
-        --   --   List.append_nil, List.flatMap_id', List.contains_eq_mem, List.mem_flatten,
-        --   --   List.any_eq_true, List.all_eq_true, decide_eq_true_eq]
-        --   -- use cur_step
-        --   -- constructor
-        --   -- · exact is_goal
-        --   -- · intro one_prop h_one_prop
-        --   simp only
-        --   unfold STRIPS.apply_action_if_applicable
-        --   -- Hm, might need to add the proof that the action took place
-        --   -- and moved from the previous state to the current state in the known_steps map.
 
-        --   -- Thinking about it even more, I should prefer storing the entire list of actions
-        --   -- that led to the state, instead of just the previous state and the action.
-        --   -- This way, I cam store the proof of the entire list of actions leading to the goal.
 
-        -- ) }
-        -- TODO: Prove validity of the plan
 
       -- The current step does not achieve the goal, generate new states
       else
@@ -108,15 +116,13 @@ def linear_search (initial_search_state : Search.SearchState) :
             if ¬ known_steps.contains new_state then
               known_steps := known_steps.insert new_state (cur_step, action)
 
-              -- steps_to_explore := new_state :: steps_to_explore
-              -- The new state needs to be added to the back, not the front, to ensure BFS behavior
-              steps_to_explore := steps_to_explore ++ [new_state]
+              -- Insert by heuristic; keep FIFO order when heuristic values tie.
+              steps_to_explore :=
+                insert_step_by_heuristic initial_search_state new_state steps_to_explore
 
 
             -- If the new state is already known, do nothing
-            else  continue
+            else continue
 
   -- If no solution is found, return none
-  -- dbg_trace "No solution found"
-  -- dbg_trace "Known steps: {known_steps.size}"
   none

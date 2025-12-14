@@ -2,6 +2,7 @@ import Graphplan.Basic
 import Mathlib.Tactic.DeriveFintype
 import Graphplan.Search.Graphplan
 import Graphplan.Search.Linear
+import Graphplan.Search.Linear_Heuristic
 
 -- This examples takes from the rocket_facts4 example from the graphplan paper:
 
@@ -117,9 +118,10 @@ def Rocket_STRIPS_Plan : STRIPS_Plan where
       }
 
     goal_states :=
-      [ { At (RocketVar.Cargo Cargo.Alex) Place.Paris,
-        -- At (RocketVar.Cargo Cargo.Jason) Place.JFK ,
-        -- At (RocketVar.Cargo Cargo.Pencil) Place.Paris ,
+      [ {
+        At (RocketVar.Cargo Cargo.Alex) Place.Paris,
+        At (RocketVar.Cargo Cargo.Jason) Place.JFK ,
+        At (RocketVar.Cargo Cargo.Pencil) Place.Paris ,
         At (RocketVar.Cargo Cargo.Paper) Place.JFK
         } ]
 
@@ -130,15 +132,21 @@ def action_name (op : STRIPS_Operator RocketProp) : Option String :=
 
 -- Use Graphplan search to solve the Rocket_STRIPS_Plan
 def initial_search_state := Search.mk_search_state Rocket_STRIPS_Plan
-#time
 def solution := graphplan_search initial_search_state
+-- def solution := heuristic_search initial_search_state
 -- def solution := linear_search initial_search_state
 
+set_option trace.profiler true
+
 -- Is the solution valid?
-#eval
+def solution_valid :=
   match solution with
   | none => false
   | some sol => Search.is_valid_plan Rocket_STRIPS_Plan sol.actions
+#eval solution_valid
+
+set_option trace.profiler false
+
 
 def solution_names :=
   solution.map (fun sol =>

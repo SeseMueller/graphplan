@@ -92,4 +92,15 @@ def is_goal_reached (s : SearchState) (state : List s.plan.Props) : Bool :=
   let _ := s.plan.prop_decidable
   ∃ goal_state ∈ s.plan.goal_states, goal_state ⊆ state
 
+
+-- Helper function that searches the given HashMap for a Value, returning none if not found.
+-- This is very slow, but it should only be done once a solution is found, and only once.
+def find_in_hashmap? {K V : Type} [BEq K] [Hashable K]
+    (hm : Std.HashMap K V) (key : K) : Option V := do
+  for (k, v) in hm do
+    if k == key then
+      return  v
+  none
+
+
 end Search
