@@ -84,14 +84,15 @@ def Hanoi_Problem (n : Nat) : STRIPS_Plan where
     let mut init : List (HanoiProp n) := {}
     -- All disks are on peg A, largest at bottom
     if h : n > 0 then
+      init := init.insert (On (Disk.mk (Fin.mk (n-1) (Nat.sub_one_lt_of_lt h)))
+            (HanoiVar.Peg Peg.A))
       for i in List.finRange n do
         let d := Disk.mk i
-        init := init.insert (On d (HanoiVar.Peg Peg.A))
         match i with
         | ⟨0, _⟩ =>
           init := init.insert (Clear (HanoiVar.Disk d))
-        | _ =>
-          let smaller := Disk.mk (i.predAbove 0)
+        | ⟨i, isLt⟩ =>
+          let smaller := Disk.mk (Fin.mk (i - 1) (Nat.sub_lt_of_lt isLt))
           init := init.insert (On smaller (Disk d))
 
 
@@ -113,8 +114,8 @@ def Hanoi_Problem (n : Nat) : STRIPS_Plan where
             --   goal := goal.insert (On smaller (Disk d))
             match i with
             | ⟨0, _⟩ => ()
-            | _ =>
-              let smaller := Disk.mk (i.predAbove 0)
+            | ⟨i, isLt⟩ =>
+              let smaller := Disk.mk (Fin.mk (i - 1) (Nat.sub_lt_of_lt isLt))
               goal := goal.insert (On smaller (Disk d))
 
           -- And the largest disk is on peg C
