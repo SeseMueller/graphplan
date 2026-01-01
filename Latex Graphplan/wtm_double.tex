@@ -41,6 +41,7 @@
 \usepackage{geometry} 	  % Type area (size, margins...) !!!Draft version
 \geometry{a4paper,body={7.0in,9.1in}}
 
+\usepackage{hyperref}                   % Allow the clicking on references and citations
 \usepackage{graphicx}                   % Inclusion of graphics
 %\usepackage{latexsym}                  % Special symbols
 \usepackage{longtable}									% Allow tables over several parges
@@ -173,6 +174,29 @@
 \section{STRIPS}
 \label{sec:strips}
 
+% TODO: what is a Problem language named? just "problem language"? maybe check out lecture. 
+The Stanford Research Institute Problem Solver (STRIPS) is both a problem language and problem solver 
+developed in 1971 at the Stanford Research Institute in California. \cite{fikes1971strips}
+This paper will focus on the problem language, as it is used in the input of the graphplan algorithm.
+%TODO: look at the solver the paper used and compare it to linear search and graphplan
+STRIPS operates in a closed world of first-order predicate logic. The "variables" %TODO: reword
+the problem operates on are predicates on zero or more variables, and all predicates that aren't known to be true 
+are assumed to be false. 
+The problem space for an instance of STRIPS consists of the initial conditions, the goal conditions,
+as well as the set of available operators (also called actions).
+Each action consists of a set of variables that must be set for the action to be possible, a set of variables that 
+must not be set for the action to be possible, a set of variables that is set to 
+
+
+%TODO: give examples of which STRIPS implementations disagree
+Note that some implementations of STRIPS disagree on whether or not the goal description of an instance of STRIPS
+should have only a single or multiple set of variables. In the original paper, a single goal state is used. %TODO: check
+One can however translate a STRIPS implementation with multiple possible goal states into an implementation with only a single
+goal while preserving validity by adding a new variable, $goal_achieved$, setting it as the new goal and creating
+a new action for each of the multiple goal states that requires the old goal to be set, and sets the new variable. %TODO: prove?
+
+The implementation of graphplan this paper presents uses multiple goals, as searches with a heuristic perform better. %TODO: ?? prove? explain?
+
 An introduction into the STRIPS problem format, with mathematical construction.
 
 \subsection{Example}
@@ -227,8 +251,35 @@ Again, with terminology from the lecture.
 Applycation of graphplan to the same problem. 
 Best if the visualization/problem shows the strengths of graphplan.
 
-\section{Implementation in LEAN}
-\label{sec:implementation}
+\section{Lean}
+\label{sec:lean}
+
+Lean \cite{leanPage} is a programming language and proof assistant that 
+is currently gaining in popularity, in part because it is the language of choice for
+evaluating LLMs' capabilities regarding mathematics, as well as
+auto-formalization of mathematical problems \cite{alphaProof} \cite{tao2025aiContributions}.
+
+The formalization of proofs in Lean is however not limited to purely mathematical statements; 
+proofs are a part of the type system (see \ref{subsec:lean_proof_assistant}) and can refer to
+variables and objects just as they can refer to axioms, theorems and other proofs. 
+This allows code in Lean to express and prove statements about the code itself, an example of which
+can be seen in the formal verification of the Amazon AWS Cedar language, which is responsible for 
+defining permissions on Amazons code services \cite{cedar}.
+
+% \subsection{Lean as a programming language}
+% Lean was influenced strongly by ML and Haskell 
+% I'm not sure whether I actually have enough to write about lean as a programming language. In any case, I should probably
+% not give an introductory lean course, but rather write something about how lean influenced the way I wrote the implementation.
+
+
+\subsection{Lean as a proof assistant}
+\label{subsec:lean_proof_assistant}
+
+
+
+Proof irrelevance: all proofs of the same statement are equal
+\subsection{Proving statements about Graphplan in Lean}
+
 
 A section (I don't yet know how long) about implementing STRIPS in Lean. 
 Details, snags I've hit, performance, etc. 
@@ -247,7 +298,7 @@ getting an LLM to try to solve the problem, probably using the DSL for simplicit
 Conclusion, if neccessary. 
 
 % insert your bibliographic references into the bib.bib file
-% \bibliographystyle{plain}
-% \addcontentsline{toc}{section}{Bibliography}% Add to the TOC
-% \bibliography{bib}
+\bibliographystyle{plain}
+\addcontentsline{toc}{section}{Bibliography} % Add to the TOC
+\bibliography{references}
 \end{document}
