@@ -162,6 +162,10 @@
 \maketitle
 
 \begin{abstract}
+  The graphplan algorithm in the STRIPS problem space %TODO: do I need to refer to the STRIPS section here as well??
+is an 
+
+
   Graphplan is an algorithm in the field of planning algorithms. 
   It works on a STRIPS (Stanford Research Institute Problem Solver) problem; 
   this problem format is introduced in section 1.
@@ -178,14 +182,35 @@
 The Stanford Research Institute Problem Solver (STRIPS) is both a problem language and problem solver 
 developed in 1971 at the Stanford Research Institute in California. \cite{fikes1971strips}
 This paper will focus on the problem language, as it is used in the input of the graphplan algorithm.
+
+The problem space of the STRIPS planning language is that of a single agent in a static state that can only be transformed 
+into another static state using an action from a set of available actions. It "[…] is often cited as providing
+a seminal framework for attacking [this] 'classical planning problem' […]" \cite{fikes1993strips}. 
+%TODO: reorder, this doesn't fit well here but should probably be said.
+
 %TODO: look at the solver the paper used and compare it to linear search and graphplan
 STRIPS operates in a closed world of first-order predicate logic. The "variables" %TODO: reword
-the problem operates on are predicates on zero or more variables, and all predicates that aren't known to be true 
-are assumed to be false. 
+the problem operates on are predicates on zero or more primitives, and all predicates that aren't known to be true 
+are assumed to be false. %TODO: explain primitives?
 The problem space for an instance of STRIPS consists of the initial conditions, the goal conditions,
 as well as the set of available operators (also called actions).
 Each action consists of a set of variables that must be set for the action to be possible, a set of variables that 
-must not be set for the action to be possible, a set of variables that is set to 
+must not be set for the action to be possible, a set of variables that is set to be true after the action is taken,
+and a set of variables that is set to not be true after an action is taken. 
+Note that in the formal description of an instance of STRIPS, the actions do not have free variables; 
+each action is enumerated with each combination of primitives it can take on. For brevity and reduced memory usage,
+the written descriptions of STRIPS instances as well as some implementations do use free variables, but these are % TODO: which implementations? Reword or research
+mathematically equivalent. %TODO: reword
+
+%TODO: write about implicit typing in STRIPS problems? It might make this paragraph a bit too long...
+% But I should probably write about it because the Graphplan paper does a lot of implicit typing and the rocket example
+% kinda is ambiguous based on whether the "In" relation can be between two rockets.... 
+
+%TODO: reword
+An example of a STRIPS problem also described in the paper is that of a rocket-based cargo-hauling 
+operation. The primitives of this STRIPS instance are the places, the rockets and the cargo.
+The three predicates are "At", "In" and "HasFuel", with two, two and one free variables respectively. %TODO: Graphics??
+The first operator is "Load", with three free variables %TODO: write the section about implicit typing and then come back here
 
 
 %TODO: give examples of which STRIPS implementations disagree
@@ -210,6 +235,14 @@ Optimally, it would also show the strengths of the Graphplan algorithm.
 
 \subsection{Applications}
 \label{sec:strips_applications}
+
+%TODO: reword
+STRIPS in and of itself is not used often these days, not only because the planning in static, single-agents worlds
+has become unpopular, but also because the advent of PDDL led to many ditching STRIPS for PDDL, as it had a lot more
+solvers as well as public attention, and is more expressive, being able to much more efficiently encode information such as 
+position or timing, and actually encodes types properly. Notably, it however still inspired large parts of PDDL, as the 
+preconditions and add-list and delete-list are kept almost verbatim in PDDL (just with the optional extensions using ADL), 
+and the fact that PDDL also has a STRIPS compatibility mode. 
 
 A very short section about which problems the STRIPS problem format could be used for 
 and why it can be especially useful (Reduction to P-Hard problems) % ? Graphplan claims to be P-Fast on a problem that is technically P-Space hard.
