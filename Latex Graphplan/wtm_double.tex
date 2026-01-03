@@ -201,17 +201,40 @@ Note that in the formal description of an instance of STRIPS, the actions do not
 each action is enumerated with each combination of primitives it can take on. For brevity and reduced memory usage,
 the written descriptions of STRIPS instances as well as some implementations do use free variables, but these are % TODO: which implementations? Reword or research
 mathematically equivalent. %TODO: reword
+Instantiating expressions with free variables into all possible combinations is called grounding and is known cause the problem
+size to explode, as the size of a fully grounded STRIPS instance can be exponentially larger than the informal description that
+contains free variables. \cite{gnad2019learning}
 
+In standard STRIPS instances, the primitives are simple objects with no additional information besides their 
+name. This means that they do not have a type that can be used to group like primitives (for example, rockets and cargo)
+together. In order to still be able to limit actions to specific primitives, predicates are used instead of types,
+supplied in the initial conditions and never allowed to change through actions. In the Rockets-example from the paper about graphplan, %TODO: allowed to change? reowrd
+the LOAD and UNLOAD actions have three free variables that can only be occupied by cargo, rockets and places respecitively.\cite{blum1997fast}
+In order to force the primitives to respect this limitation, each cargo primitive is assigned the CARGO predicate in the initial conditions,
+each rocket primitive the ROCKET predicate and each place the PLACE predicate. Then the actions can require the first primitive to
+have the CARGO predicate, the second the ROCKET predicate and the third the PLACE predicate, thus successfully implementing the limitations. 
 %TODO: write about implicit typing in STRIPS problems? It might make this paragraph a bit too long...
 % But I should probably write about it because the Graphplan paper does a lot of implicit typing and the rocket example
 % kinda is ambiguous based on whether the "In" relation can be between two rockets.... 
 
-%TODO: reword
+%TODO: manage citations? where should the graphplan paper be cited?
+
+%TODO: add distinction between problem world and problem instance?
+
+%TODO: reword, this also repeats what the above paragraph says.
 An example of a STRIPS problem also described in the paper is that of a rocket-based cargo-hauling 
 operation. The primitives of this STRIPS instance are the places, the rockets and the cargo.
 The three predicates are "At", "In" and "HasFuel", with two, two and one free variables respectively. %TODO: Graphics??
-The first operator is "Load", with three free variables %TODO: write the section about implicit typing and then come back here
+The first action is "Load", with three free variables that have to implement the predicates CARGO, ROCKET and PLACE respecitively.
+It requires the rocket to be "At" the place, and the cargo to be "At" the place and leads to the cargo being "In" the rocket and the cargo no longer being "At" the place.
+The second action, "Unload", has the same variables and predicate requirement as "Load", but instead requires the rocket to be "At" the place
+and the object to be "In" the rocket and leads to the object being "At" the place and not being "In" the rocket anymore.
+The last action, "Move" has three free variables, where the first is required to have the "Rocket" predicate and the second and third
+the "Place" predicate. It requires the rocket to have the "HasFuel" predicate and the rocket to be "At" the first place. 
+It leads to the rocket being "At" the second place, the rocket not being "At" the first place anymore, and the rocket to no longer have "HasFuel". 
+%TODO: replace description with graphics? The explaination is a bit wordy. Also, make it proper mathematical setup with pseudo-types!
 
+%TODO: write about all the small details of STRIPS in the Lean implementation section!
 
 %TODO: give examples of which STRIPS implementations disagree
 Note that some implementations of STRIPS disagree on whether or not the goal description of an instance of STRIPS
@@ -221,17 +244,6 @@ goal while preserving validity by adding a new variable, $goal_achieved$, settin
 a new action for each of the multiple goal states that requires the old goal to be set, and sets the new variable. %TODO: prove?
 
 The implementation of graphplan this paper presents uses multiple goals, as searches with a heuristic perform better. %TODO: ?? prove? explain?
-
-An introduction into the STRIPS problem format, with mathematical construction.
-
-\subsection{Example}
-\label{sec:strips_example}
-
-A small, but nontrivial example of a STRIPS problem. 
-The one on wikipedia (the monkey that moves the box to reach the bananas) is a bit too simple. 
-It should take more than four steps to solve the problem. 
-
-Optimally, it would also show the strengths of the Graphplan algorithm.
 
 \subsection{Applications}
 \label{sec:strips_applications}
@@ -247,23 +259,40 @@ and the fact that PDDL also has a STRIPS compatibility mode.
 A very short section about which problems the STRIPS problem format could be used for 
 and why it can be especially useful (Reduction to P-Hard problems) % ? Graphplan claims to be P-Fast on a problem that is technically P-Space hard.
 
-\section{Linear Search}
-\label{sec:linear_search}
+\section{Breadth-first Search}
+\label{sec:bf_search}
+
+Because only the agent can transform the state of a STRIPS problem, the search space can be represented by a directed graph where
+two states are connected, if the second state is reachable from the first by an action. Thus, the goal can be searched by known graph 
+search algorithms, such as breadth-first search. 
+
+Because a state may appear multiple times in the graph, proper memoization is necessary to make sure the search does not get stuck in
+and infinite loop. Other than that, a simple breadth-first search is easy to implement and can serve as a good grounding for the
+implementation of graphplan. Because of its simplicity, it is also much easier to prove statements about it in lean. 
+%TODO: reword
+
+However, since the problem space of a fully grounded STRIPS instance can be exponentially larger than the informal description, 
+the search graph that a breadth-first search spans also grows exponentially, leading to the search having to traverse TODO!
+even when the solution is only TODO states away.
+%TODO: measure the amount of states the linear search had to traverse while solving Hanoi problems! Or use the rocket problem. 
+
+This weakness of breadth-first search is alleviated quite a bit in graphplan %TODO: "alleviated" doesn't fit, it's more like "fixed"
+%TODO: is the memory footprint of graphplan really better? DO the mutexes not take up an exponential amount of memory?
 
 A small section on linear search, the search algorithm implemented
 in the recommended Github repository. 
 Should definitely be using terminology from the lecture.
-(I'm pretty sure it's a breadth-first search, but I'm not sure; I haven't implemented it yet).
+%TOOD: check terminology!
 
 Also maybe a few notes on the implementation in LEAN. 
 
-\subsection{Applying Linear Search}
-\label{sec:linear_search_application}
+\subsection{Applying breadth-first Search}
+\label{sec:bf_search_application}
 
 A small section on applying linear search to the sample problem from
 the section on STRIPS. Should get the reader to understand applied 
 STRIPS a bit better and prepare for the Graphplan explaination.
-
+%TODO: should I really show this? probably, yes....
 
 \section{Graphplan}
 \label{sec:graphplan}
@@ -283,6 +312,7 @@ Again, with terminology from the lecture.
 
 Applycation of graphplan to the same problem. 
 Best if the visualization/problem shows the strengths of graphplan.
+%TODO: maybe also write a bit about extensions to Graphplan? there are many papers on that... 
 
 \section{Lean}
 \label{sec:lean}
