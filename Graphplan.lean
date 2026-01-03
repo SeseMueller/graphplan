@@ -170,7 +170,8 @@ def solution_actions : List (STRIPS_Operator MonkeyBoxProp) :=
 def initial_search_state := Search.mk_search_state MonkeyBox_STRIPS_Plan
 
 -- def solution := linear_search initial_search_state
-def solution := graphplan_search initial_search_state
+def solution := linear_search_proved initial_search_state
+-- def solution := graphplan_search initial_search_state
 
 def solution_repr :=
   let _ := initial_search_state.plan.prop_repr

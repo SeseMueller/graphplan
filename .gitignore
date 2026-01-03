@@ -16,3 +16,4 @@ Testing.lean
 *.log
 *.fdb_latexmk
 *.synctex.gz
+*.out
