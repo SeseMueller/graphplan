@@ -78,8 +78,7 @@ def All_SimpleBlocks_Actions : Array (STRIPS_Operator BWProp × String) :=
 
   outarray
 
-def SimpleBlocks_STRIPS_Plan : STRIPS_Plan where
-  Props := BWProp
+def SimpleBlocks_STRIPS_Plan : STRIPS_Plan BWProp where
   prop_decidable := instDecidableEqBWProp
   Actions := All_SimpleBlocks_Actions.map (fun x => x.fst)
   prop_hashable := instHashableBWProp
@@ -111,8 +110,8 @@ def solution :=
 
 def solution_repr :=
   let _ := initial_search_state.plan.prop_repr
-  let op_rep : Repr (STRIPS_Operator initial_search_state.plan.Props) := by infer_instance
-  let _ : Repr (List (STRIPS_Operator initial_search_state.plan.Props)) := instReprList
+  let op_rep : Repr (STRIPS_Operator BWProp) := by infer_instance
+  let _ : Repr (List (STRIPS_Operator BWProp)) := instReprList
   solution.map (fun sol => sol.actions.map (fun op => repr op))
 
 def solution_names :=
@@ -129,8 +128,7 @@ def solution_names :=
 
 
 -- Sussman Anomaly example
-def SussmanAnomaly_STRIPS_Plan : STRIPS_Plan where
-  Props := BWProp
+def SussmanAnomaly_STRIPS_Plan : STRIPS_Plan BWProp where
   prop_decidable := instDecidableEqBWProp
   Actions := All_SimpleBlocks_Actions.map (fun x => x.fst)
   prop_hashable := instHashableBWProp

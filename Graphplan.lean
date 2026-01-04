@@ -111,8 +111,7 @@ def action_name (op : STRIPS_Operator MonkeyBoxProp) : Option String :=
   found.map (fun x => x.snd)
 
 -- The complete STRIPS planning problem for the monkey and bananas example.
-def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
-  Props := MonkeyBoxProp
+def MonkeyBox_STRIPS_Plan : STRIPS_Plan MonkeyBoxProp where
   prop_decidable := instDecidableEqMonkeyBoxProp
   prop_repr := instReprMonkeyBoxProp
   Actions := All_MonkeyBox_Actions.map (fun x => x.fst)
@@ -137,7 +136,7 @@ def MonkeyBox_STRIPS_Plan : STRIPS_Plan where
   }
 
 -- The same example, but using the DSL operator `>-`
-def Example_Simulation_End_state_DSL : STRIPS_Plan :=
+def Example_Simulation_End_state_DSL : STRIPS_Plan MonkeyBoxProp :=
   let test :=
     -- TakeBananas C
     -- >- ClimbUp C
@@ -175,8 +174,8 @@ def solution := linear_search_proved initial_search_state
 
 def solution_repr :=
   let _ := initial_search_state.plan.prop_repr
-  let op_rep : Repr (STRIPS_Operator initial_search_state.plan.Props) := by infer_instance
-  let _ : Repr (List (STRIPS_Operator initial_search_state.plan.Props)) := instReprList
+  let op_rep : Repr (STRIPS_Operator MonkeyBoxProp) := by infer_instance
+  let _ : Repr (List (STRIPS_Operator MonkeyBoxProp)) := instReprList
   solution.map (fun sol => sol.actions.map (fun op => repr op))
 
 def new_solution_actions :=

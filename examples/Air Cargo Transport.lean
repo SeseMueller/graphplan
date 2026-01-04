@@ -93,8 +93,7 @@ def All_ACT_Actions : Array (STRIPS_Operator ACTProp × String) :=
     actions
   outarray
 
-def ACT_STRIPS_Plan : STRIPS_Plan where
-  Props := ACTProp
+def ACT_STRIPS_Plan : STRIPS_Plan ACTProp where
   prop_decidable := instDecidableEqACTProp
   Actions := All_ACT_Actions.map (fun x => x.fst)
   prop_hashable := instHashableACTProp
@@ -127,8 +126,8 @@ def solution :=
 
 def solution_repr :=
   let _ := initial_search_state.plan.prop_repr
-  let op_rep : Repr (STRIPS_Operator initial_search_state.plan.Props) := by infer_instance
-  let _ : Repr (List (STRIPS_Operator initial_search_state.plan.Props)) := instReprList
+  let op_rep : Repr (STRIPS_Operator ACTProp) := by infer_instance
+  let _ : Repr (List (STRIPS_Operator ACTProp)) := instReprList
   solution.map (fun sol => sol.actions.map (fun op => repr op))
 
 def solution_names :=

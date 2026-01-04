@@ -101,9 +101,8 @@ def All_Actions : Array (STRIPS_Operator RocketProp × String) :=
 
 
 -- The whole plan
-def Rocket_STRIPS_Plan : STRIPS_Plan where
+def Rocket_STRIPS_Plan : STRIPS_Plan RocketProp where
 
-    Props := RocketProp
     prop_decidable := by infer_instance
     prop_hashable := by infer_instance
     prop_repr := by infer_instance
