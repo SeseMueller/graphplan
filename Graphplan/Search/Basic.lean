@@ -89,7 +89,8 @@ theorem valid_plan_extend' {α : Type} (P1 : STRIPS_Plan α)
       current_state := STRIPS.apply_action_if_applicable P1 (additional_action) })
     (actions1 : List (STRIPS_Operator α))
     (actions2 : List (STRIPS_Operator α))
-    (h_plan_eq : P2 = { P1 with current_state := STRIPS.apply_action_if_applicable P1 additional_action })
+    (h_plan_eq : P2 =
+      { P1 with current_state := STRIPS.apply_action_if_applicable P1 additional_action })
     (h_actions_eq : actions1 = [additional_action] ++ actions2)
     (h_valid : is_valid_plan' P2 actions2 = true) :
     is_valid_plan' P1 actions1 = true := by {
@@ -137,6 +138,10 @@ structure SearchState (α : Type) where
   steps_beq : BEq (List α)
   -- The fact that a step is hashable
   step_hashable : Hashable (List α)
+  -- Facts about the Lists, to allow for efficient hashing and comparison
+  steps_lawful_beq : LawfulBEq (List α) := by infer_instance
+  steps_lawful_hashable : LawfulHashable (List α) := by infer_instance
+  steps_equiv_beq : EquivBEq (List α) := by infer_instance
   -- The hashmap that maps all known states to their previous state and the action that led to them
   known_steps : Std.HashMap (List α) ((List α) × (STRIPS_Operator α))
 
@@ -173,15 +178,6 @@ def is_goal_reached {α : Type} (s : SearchState α) (state : List α) : Bool :=
   ∃ goal_state ∈ s.plan.goal_states, goal_state ⊆ state
 
 
--- Helper function that searches the given HashMap for a Value, returning none if not found.
--- This is very slow, but it should only be done once a solution is found, and only once.
-def find_in_hashmap? {K V : Type} [BEq K] [Hashable K]
-    (hm : Std.HashMap K V) (key : K) : Option V := do
-  for (k, v) in hm do
-    if k == key then
-      return  v
-  none
-
 -- Helper function: if is_goal_reached is true, construct a trivial solution:
 -- no actions needed, current state is goal state.
 def trivial_solution_if_goal_reached {α : Type} (s : SearchState α)
@@ -203,5 +199,110 @@ def trivial_solution_if_goal_reached {α : Type} (s : SearchState α)
       exact { actions := actions, is_valid := h_valid }
     }
 
+
+
+-- A modified Hashmap where each entry is of type HashTarget
+-- and each values curr_state equals the key.
+
+structure HashTarget {α : Type} (s : SearchState α) where
+  prev_state : List α
+  action : STRIPS.STRIPS_Operator α
+  curr_state: List α
+  h_action_transitions : STRIPS.apply_action_if_applicable
+    { s.plan with current_state := prev_state } action = curr_state
+
+structure HashMapWithTarget {α : Type} (s : SearchState α) where
+  h_beq : BEq (List α) := s.steps_beq
+  h_hashable : Hashable (List α) := s.step_hashable
+  hm : Std.HashMap (List α) (HashTarget s)
+  h_key_eq_curr_state : ∀ (k : List α) (v : HashTarget s),
+    hm.get? k = some v → v.curr_state = k
+  inst_EquivBEq : EquivBEq (List α) := by {
+    let _ := s.steps_equiv_beq
+    infer_instance
+  }
+  inst_LawfulBEq : LawfulBEq (List α) := by {
+    let _ := s.steps_lawful_beq
+    infer_instance
+  }
+  inst_LawfulHashable : LawfulHashable (List α) := by {
+    let _ := s.steps_lawful_hashable
+    infer_instance
+  }
+
+def HashMapWithTarget.insert {α : Type} (s : SearchState α) (hmwt : HashMapWithTarget s)
+    (k : List α) (v : HashTarget s) (h_key_eq_curr_state : v.curr_state = k) :
+    (HashMapWithTarget s) :=
+  {
+    h_beq := hmwt.h_beq,
+    h_hashable := hmwt.h_hashable,
+    inst_EquivBEq := hmwt.inst_EquivBEq,
+    inst_LawfulBEq := hmwt.inst_LawfulBEq,
+    inst_LawfulHashable := hmwt.inst_LawfulHashable,
+    hm := hmwt.hm.insert k v
+
+    h_key_eq_curr_state := by {
+      let _ := hmwt.h_beq
+      let _ := hmwt.h_hashable
+      let _ := hmwt.inst_EquivBEq
+      let _ := hmwt.inst_LawfulBEq
+      intro key value h_find
+
+      have h_old_val := hmwt.h_key_eq_curr_state key value
+
+      -- -- Now, depending on whether or not the key and k are equal
+      by_cases h_key_eq_k : key = k
+      {
+        simp_all
+      }
+      {
+      -- Now split cases by whether or not the key value pair is already in the hashmap
+      by_cases h_already_in : (key, value) ∈ hmwt.hm.toList
+      {
+        have h_finds : hmwt.hm.get? key = some value :=
+          by {
+            clear h_old_val
+            simp_all only [Std.HashMap.get?_eq_getElem?,
+              Std.HashMap.mem_toList_iff_getElem?_eq_some]
+          }
+        exact h_old_val h_finds
+        }
+      {
+        simp_all only [Std.HashMap.get?_eq_getElem?, Std.HashMap.mem_toList_iff_getElem?_eq_some,
+          IsEmpty.forall_iff]
+        have h_old_val := hmwt.h_key_eq_curr_state key value
+
+        -- Combining h_find and h_key_eq_k should lead to a contradiction
+        have h_key_gets_value : hmwt.hm[key]? = some value := by {
+          simp_all
+          contrapose h_already_in
+          -- contrapose h_find
+          simp_all
+          rw [← h_find]
+          clear h_find
+          -- have test := Std.HashMap.getElem_insert
+
+          symm
+          convert_to (hmwt.hm.insert k v)[key]? = -- In preparation for the rw
+            if h : (key == k) = true then some v else hmwt.hm[key]?
+          simp_all only [beq_iff_eq, ↓reduceDIte]
+          rw [Std.HashMap.getElem?_insert]
+          simp_all only [beq_iff_eq, ↓reduceDIte, ite_eq_right_iff]
+          grind only
+
+        }
+        exact h_old_val h_key_gets_value
+
+      }
+      }
+
+
+
+    }
+  }
+
+def HashMapWithTarget.contains {α : Type} (s : SearchState α) (hmwt : Search.HashMapWithTarget s)
+    (k : List α) : Bool :=
+  hmwt.hm.contains k
 
 end Search

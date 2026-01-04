@@ -74,8 +74,7 @@ def All_Actions {n : Nat} : Array (STRIPS_Operator (HanoiProp n) × String) :=
   outarray
 
 -- The whole planning problem for Towers of Hanoi with n disks
-def Hanoi_Problem (n : Nat) : STRIPS_Plan where
-  Props := HanoiProp n
+def Hanoi_Problem (n : Nat) : STRIPS_Plan (HanoiProp n) where
   prop_decidable := by infer_instance
   prop_hashable := by infer_instance
   prop_repr := by infer_instance
@@ -139,8 +138,10 @@ def action_name {n : Nat} (action : STRIPS_Operator (HanoiProp n)) : Option Stri
 def initial_search_state (n : Nat) :=
   Search.mk_search_state (Hanoi_Problem n)
 def size := 5
-def solution := graphplan_search (initial_search_state size)
+-- def solution := graphplan_search (initial_search_state size)
 -- def solution := heuristic_search (initial_search_state size)
+def solution := linear_search_proved (initial_search_state size)
+-- def solution := linear_search (initial_search_state size)
 
 -- Is the solution valid?
 def solution_valid :=

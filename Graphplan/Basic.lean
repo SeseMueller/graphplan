@@ -28,6 +28,9 @@ structure STRIPS_Plan (Props : Type) where
   -- We don't need Fintype for now, but we do need hashable for HashMap for efficient serach.
   prop_hashable : Hashable Props
   prop_decidable : DecidableEq Props
+  prop_lawful_beq : LawfulBEq Props := by infer_instance
+  prop_lawful_hashable : LawfulHashable Props := by infer_instance
+  prop_equiv_beq : EquivBEq Props := by infer_instance
   prop_repr : Repr Props -- For debugging purposes
   -- The actions that can be performed in the planning problem
   Actions : Array (STRIPS_Operator Props)

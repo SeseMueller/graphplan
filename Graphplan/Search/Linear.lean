@@ -63,7 +63,7 @@ def linear_search {α : Type} (initial_search_state : Search.SearchState α) :
         let mut state := cur_step
 
         while state ≠ initial_search_state.plan.current_state do
-          match Search.find_in_hashmap? known_steps state with
+          match known_steps.get? state with
           | none =>
             dbg_trace "Error: state not found in known_steps during solution reconstruction"
             none -- This should not happen
@@ -152,12 +152,6 @@ but reconstructs the full path and verifies it using `Search.is_valid_plan`
 to produce a `Search.Solution`.
 -/
 
-structure HashTarget {α : Type} (s : Search.SearchState α) where
-  prev_state : List α
-  action : STRIPS.STRIPS_Operator α
-  curr_state: List α
-  h_action_transitions : STRIPS.apply_action_if_applicable
-    { s.plan with current_state := prev_state } action = curr_state
 
 -- Now, we need to change the signature of `reconstruct_path_fuel` to instead keep an accumulator
 -- of solution starting from the current state to the goal.
@@ -167,8 +161,9 @@ Reconstructs the list of actions from the initial state to the given state
 using the predecessor map.
 -/
 def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
-    (known_steps : @Std.HashMap (List α)
-      (HashTarget s) s.steps_beq s.step_hashable)
+    -- (known_steps : @Std.HashMap (List α)
+    --   (HashTarget s) s.steps_beq s.step_hashable)
+    (known_steps : (@Search.HashMapWithTarget α s))
     (current_state : List α)
     (acc : Search.Solution { s.plan with current_state := current_state })
     (fuel : Nat) :
@@ -191,9 +186,7 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
       some { actions := acc.actions
              is_valid := h  }
     else
-      match @Search.find_in_hashmap? (List α)
-        (HashTarget s)
-        s.steps_beq s.step_hashable known_steps current_state with
+      match result: known_steps.hm.get? current_state with
       | none => none
       | some ht => reconstruct_path_fuel_with_map s known_steps ht.prev_state {
           actions := ht.action :: acc.actions, is_valid := by {
@@ -201,7 +194,8 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
           -- Note: I need a modified Hashmap that stores the fact that the key is
           -- contained in the value, to avoid re-proving it here.
           have h_ht_cur_state_eq_cur_state : ht.curr_state = current_state := by {
-            sorry
+            have hash_map_invariant := known_steps.h_key_eq_curr_state current_state ht
+            exact hash_map_invariant result
           }
 
           -- First, the fact that the previous actions are valid
@@ -248,8 +242,9 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
             })
           rw [Search.is_valid_plan_equiv]
           have test : P1 = (let __src := s.plan;
-            { prop_hashable := __src.prop_hashable, prop_decidable := __src.prop_decidable, prop_repr := __src.prop_repr,
-              Actions := __src.Actions, current_state := ht.prev_state, goal_states := __src.goal_states }) := by {
+            { prop_hashable := __src.prop_hashable, prop_decidable := __src.prop_decidable,
+                prop_repr := __src.prop_repr, Actions := __src.Actions,
+                current_state := ht.prev_state, goal_states := __src.goal_states }) := by {
                 rfl
               }
           rw [← test]
@@ -269,9 +264,11 @@ def linear_search_proved {α : Type} (initial_search_state : Search.SearchState 
   let _ := initial_search_state.plan.prop_decidable
   let _ := initial_search_state.plan.prop_repr
 
-  let rec bfs_loop (known_steps : @Std.HashMap (List α)
-    (HashTarget initial_search_state)
-    initial_search_state.steps_beq initial_search_state.step_hashable)
+  let rec bfs_loop
+    -- (known_steps : @Std.HashMap (List α)
+    --   (Search.HashTarget initial_search_state)
+    --   initial_search_state.steps_beq initial_search_state.step_hashable)
+    (known_steps : (Search.HashMapWithTarget initial_search_state))
     (steps_to_explore : List (List α))
     (fuel : Nat) :
     Option (Search.Solution initial_search_state.plan) := do
@@ -308,8 +305,8 @@ def linear_search_proved {α : Type} (initial_search_state : Search.SearchState 
             if STRIPS.is_applicable' cur_step action then
               let new_state := STRIPS.apply_action_if_applicable
                 { initial_search_state.plan with current_state := cur_step } action
-              if ¬ new_known.contains new_state then
-                new_known := new_known.insert new_state {
+              if ¬ new_known.contains initial_search_state new_state then
+                new_known := new_known.insert initial_search_state new_state {
                   prev_state := cur_step, action := action, curr_state := new_state
                   , h_action_transitions
                     := by
@@ -318,20 +315,28 @@ def linear_search_proved {α : Type} (initial_search_state : Search.SearchState 
                       unfold STRIPS.apply_action_if_applicable
                       simp only
                     }
-                  }
+                  } (by simp)
+                  -- This is missing the proof that the new state is not yet contained.
                 new_steps := new_steps ++ [new_state]
           bfs_loop new_known new_steps fuel'
 
   -- We changed the type signature of known_steps to store HashTarget instead of a tuple.
   -- This will clear the input hash map!
-  let my_known_steps : @Std.HashMap (List α)
-    (HashTarget initial_search_state)
-    initial_search_state.steps_beq initial_search_state.step_hashable :=
-    @Std.HashMap.emptyWithCapacity
+  let my_known_steps : (Search.HashMapWithTarget initial_search_state) := {
+    hm := @Std.HashMap.emptyWithCapacity
       (List α)
-      (HashTarget initial_search_state)
+      (Search.HashTarget initial_search_state)
       initial_search_state.steps_beq
       initial_search_state.step_hashable
       10
+    h_key_eq_curr_state := by {
+      simp
+    }
+    h_beq := initial_search_state.steps_beq
+    h_hashable := initial_search_state.step_hashable
+    inst_EquivBEq := initial_search_state.steps_equiv_beq
+    inst_LawfulBEq := initial_search_state.steps_lawful_beq
+    inst_LawfulHashable := initial_search_state.steps_lawful_hashable
+  }
 
   bfs_loop my_known_steps initial_search_state.steps_to_consider 1000000

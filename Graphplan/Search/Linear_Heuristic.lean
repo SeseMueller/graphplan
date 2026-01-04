@@ -8,8 +8,8 @@ import Graphplan.Search.Basic
 
 -- Heuristic to sort the states to explore by.
 -- Currently, it is just the number of satisfied goal propositions.
-def state_heuristic (search_state : Search.SearchState)
-(state : List search_state.plan.Props) : Nat :=
+def state_heuristic {α : Type} (search_state : Search.SearchState α)
+(state : List α) : Nat :=
   let _ := search_state.plan.prop_decidable -- So the Props can be compared
   let filtered_goals := search_state.plan.goal_states.map
     (fun goal => goal.filter (fun p => state.contains p))
@@ -20,12 +20,12 @@ def state_heuristic (search_state : Search.SearchState)
   -- For now, take the maximum length as the heuristic value
   goal_lengths.foldl Nat.max 0
 
-abbrev Step (s : Search.SearchState) := List s.plan.Props
+abbrev Step {α : Type} (s : Search.SearchState α) := List α
 
 -- Heuristic buckets: each bucket stores a FIFO queue of steps (as an Array)
 -- together with the bucket's heuristic value.
 -- Invariant: buckets are ordered by descending heuristic value.
-abbrev HeuristicBuckets (s : Search.SearchState) := Array (Array (Step s) × Nat)
+abbrev HeuristicBuckets {α : Type} (s : Search.SearchState α) := Array (Array (Step s) × Nat)
 
 -- Drop the first element of an array.
 -- (Used to pop from the front of a FIFO queue implemented with an Array.)
@@ -60,8 +60,8 @@ def array_insert_at {α : Type} (a : Array α) (idx : Nat) (x : α) : Array α :
 -- Insert a step into the heuristic buckets.
 -- - Buckets are kept in descending heuristic order.
 -- - Within a bucket of equal heuristic, we append to preserve FIFO.
-def insert_step_by_heuristic
-    (search_state : Search.SearchState)
+def insert_step_by_heuristic {α : Type}
+    (search_state : Search.SearchState α)
     (step : Step search_state)
     (buckets : HeuristicBuckets search_state) : HeuristicBuckets search_state :=
   let hStep := state_heuristic search_state step
@@ -88,15 +88,15 @@ def insert_step_by_heuristic
     return bs.push (#[step], hStep)
 
 -- Convert an initial list of steps into heuristic buckets.
-def bucketize_steps
-    (search_state : Search.SearchState)
+def bucketize_steps {α : Type}
+    (search_state : Search.SearchState α)
     (steps : List (Step search_state)) : HeuristicBuckets search_state :=
   steps.foldl (fun acc s => insert_step_by_heuristic search_state s acc) #[]
 
 -- Pop the next step to explore, prioritizing higher-heuristic buckets.
 -- Preserves FIFO order within each bucket.
-def pop_next_step?
-    (search_state : Search.SearchState)
+def pop_next_step? {α : Type}
+    (search_state : Search.SearchState α)
     (buckets : HeuristicBuckets search_state)
     : Option (Step search_state × HeuristicBuckets search_state) :=
   Id.run do
@@ -120,7 +120,7 @@ def pop_next_step?
     -- If we reach here, all buckets were empty.
     return none
 
-def heuristic_search (initial_search_state : Search.SearchState) :
+def heuristic_search {α : Type} (initial_search_state : Search.SearchState α) :
     Option (Search.partial_Solution initial_search_state.plan) := do
   let _ := initial_search_state.step_decidable
   let _ := initial_search_state.steps_beq
@@ -154,16 +154,16 @@ def heuristic_search (initial_search_state : Search.SearchState) :
       -- Synthesize decidablity for the goal check
       let _ : Decidable (cur_step ∈ initial_search_state.plan.goal_states) := by
         let _ := initial_search_state.plan.prop_decidable
-        let _ : DecidableEq (List initial_search_state.plan.Props) := by infer_instance
-        let _ : BEq (List initial_search_state.plan.Props) := instBEqOfDecidableEq
+        let _ : DecidableEq (List α) := by infer_instance
+        let _ : BEq (List α) := instBEqOfDecidableEq
         infer_instance
       if is_goal: Search.is_goal_reached initial_search_state cur_step then
         -- Reconstruct the solution from known states
-        let mut actions : List (STRIPS.STRIPS_Operator initial_search_state.plan.Props) := []
+        let mut actions : List (STRIPS.STRIPS_Operator α) := []
         let mut state := cur_step
 
         while state ≠ initial_search_state.plan.current_state do
-          match Search.find_in_hashmap? known_steps state with
+          match known_steps.get? state with
           | none =>
             dbg_trace "Error: state not found in known_steps during solution reconstruction"
             none -- This should not happen
@@ -181,6 +181,10 @@ def heuristic_search (initial_search_state : Search.SearchState) :
       -- The current step does not achieve the goal, generate new states
       else
         for action in initial_search_state.plan.Actions do
+          have _ : Decidable (STRIPS.is_applicable' cur_step action) := by
+          {
+            unfold STRIPS.is_applicable'; infer_instance
+          }
           if STRIPS.is_applicable'
               cur_step action then
             let new_state := STRIPS.apply_action_if_applicable
