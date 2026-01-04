@@ -331,9 +331,24 @@ defining permissions on Amazons code services \cite{cedar}.
 \label{subsec:lean_proof_assistant}
 
 Lean can also be used as a theorem prover and proof assistant thanks to its expressive type system. 
+It uses the calculus of constructions, a dependent type theory that allows the expression of 
+complicated types, as well as propositions and proofs thanks to the Curry-Howard isomorphism \cite{theoremProvingInLean4}.
 
-Proof irrelevance: all proofs of the same statement are equal
+Using the isomorphism, all propositions expressible in Lean are represented by the kernel as a type
+which has no elements if it is false and has elements if it is true. Proving a proposition in Lean thus
+reduces to the problem of producing an element of a certain type, namely of the proposition. %TODO: reword
+Since the content of the element of the proposition is irrelevant (a single element proves that the
+proposition is inhabited and thus true), Lean also applies the concept of proof irrelevance, where
+all proofs of the same proposition are equal.
 
+In order to produce this element and thus prove the proposition, Lean provides a suite of theorems on common
+data types such as natural numbers, functions, lists, etc., as well as tactics to manipulate the proof state. 
+Together with only three axioms (propositional extensionality: all propositions of the same type are equal, 
+function extensionality: two functions are equal iff they behave the same on all elements, the axiom of choice),
+as well as the definitions of data types, Lean and its community have constructed MathLib, a project with 
+more than two million lines across more than nine thousand files \cite{10.1145/3372885.3373824} \cite{githubMathlib}.
+It has been used in many projects, for example in the ongoing effort to formalize Fermat's last theorem, 
+and is also the groundwork for the code and proofs of this paper \cite{githubFLT}.
 
 \subsection{Breadth-first and best-first search implementation in Lean}
 \label{subsec:bf_search_implementation}

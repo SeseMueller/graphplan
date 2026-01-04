@@ -340,3 +340,5 @@ def linear_search_proved {α : Type} (initial_search_state : Search.SearchState 
   }
 
   bfs_loop my_known_steps initial_search_state.steps_to_consider 1000000
+
+#print axioms linear_search_proved
