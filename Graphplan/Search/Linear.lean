@@ -7,7 +7,7 @@ import Graphplan.Search.Basic
 -- for goal satisfaction.
 
 
-def linear_search (initial_search_state : Search.SearchState) :
+def linear_search {α : Type} (initial_search_state : Search.SearchState α) :
     Option (Search.partial_Solution initial_search_state.plan) := do
   let _ := initial_search_state.step_decidable
   let _ := initial_search_state.steps_beq
@@ -54,12 +54,12 @@ def linear_search (initial_search_state : Search.SearchState) :
       -- Synthesize decidablity for the goal check
       let _ : Decidable (cur_step ∈ initial_search_state.plan.goal_states) := by
         let _ := initial_search_state.plan.prop_decidable
-        let _ : DecidableEq (List initial_search_state.plan.Props) := by infer_instance
-        let _ : BEq (List initial_search_state.plan.Props) := instBEqOfDecidableEq
+        let _ : DecidableEq (List α) := by infer_instance
+        let _ : BEq (List α) := instBEqOfDecidableEq
         infer_instance
       if is_goal: Search.is_goal_reached initial_search_state cur_step then
         -- Reconstruct the solution from known states
-        let mut actions : List (STRIPS.STRIPS_Operator initial_search_state.plan.Props) := []
+        let mut actions : List (STRIPS.STRIPS_Operator α) := []
         let mut state := cur_step
 
         while state ≠ initial_search_state.plan.current_state do
@@ -99,6 +99,9 @@ def linear_search (initial_search_state : Search.SearchState) :
       -- The current step does not achieve the goal, generate new states
       else
         for action in initial_search_state.plan.Actions do
+          have _ : Decidable (STRIPS.is_applicable' cur_step action) := by
+            unfold STRIPS.is_applicable'
+            infer_instance
           if STRIPS.is_applicable'
               cur_step action then
             let new_state := STRIPS.apply_action_if_applicable
@@ -149,30 +152,84 @@ but reconstructs the full path and verifies it using `Search.is_valid_plan`
 to produce a `Search.Solution`.
 -/
 
+structure HashTarget {α : Type} (s : Search.SearchState α) where
+  prev_state : List α
+  action : STRIPS.STRIPS_Operator α
+  curr_state: List α
+  h_action_transitions : STRIPS.apply_action_if_applicable
+    { s.plan with current_state := prev_state } action = curr_state
+
+-- Now, we need to change the signature of `reconstruct_path_fuel` to instead keep an accumulator
+-- of solution starting from the current state to the goal.
 
 /-
-Reconstructs the list of actions from the initial state to the given state using the predecessor map.
+Reconstructs the list of actions from the initial state to the given state
+using the predecessor map.
 -/
-def reconstruct_path_fuel_with_map (s : Search.SearchState)
-    (known_steps : @Std.HashMap (List s.plan.Props) ((List s.plan.Props) × (STRIPS.STRIPS_Operator s.plan.Props)) s.steps_beq s.step_hashable)
-    (current_state : List s.plan.Props)
-    (acc : List (STRIPS.STRIPS_Operator s.plan.Props))
+def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
+    (known_steps : @Std.HashMap (List α)
+      (HashTarget s) s.steps_beq s.step_hashable)
+    (current_state : List α)
+    (acc : Search.Solution { s.plan with current_state := current_state })
     (fuel : Nat) :
-    Option (List (STRIPS.STRIPS_Operator s.plan.Props)) :=
+    Option (Search.Solution s.plan) :=
   match fuel with
   | 0 => none
   | n + 1 =>
-    if s.steps_beq.beq current_state s.plan.current_state then
-      some acc
+
+    let _ := s.step_decidable
+    if h : current_state = s.plan.current_state then
+      some { actions := acc.actions
+             is_valid := by {
+              have h_prev_valid := acc.is_valid
+              simp_all
+             }  }
     else
-      match @Search.find_in_hashmap? (List s.plan.Props) ((List s.plan.Props) × (STRIPS.STRIPS_Operator s.plan.Props)) s.steps_beq s.step_hashable known_steps current_state with
+      match @Search.find_in_hashmap? (List α)
+        (HashTarget s)
+        s.steps_beq s.step_hashable known_steps current_state with
       | none => none
-      | some (prev, act) => reconstruct_path_fuel_with_map s known_steps prev (act :: acc) n
+      | some ht => reconstruct_path_fuel_with_map s known_steps ht.prev_state {
+          actions := ht.action :: acc.actions, is_valid := by {
+          -- First, the fact that the previous actions are valid
+          have h_prev_valid := acc.is_valid
+          have h_ht_trans := ht.h_action_transitions
+
+          -- Prepare induction
+          let P1 := { s.plan with current_state := ht.prev_state }
+          let P2 := { s.plan with current_state := ht.curr_state }
+
+          have P2_from_p1 : P2 = { P1 with
+            current_state := STRIPS.apply_action_if_applicable P1 (ht.action) } := by {
+              simp_all
+              unfold P2 P1
+              simp
+              rw [h_ht_trans]
+            }
+          have P2_valid_plan : Search.is_valid_plan P2 (acc.actions) = true := by {
+            simp
+            -- Hm. Something is wrong. the active state "current_state" should always agree with the
+            -- current state of the accumulator... Oh, right. By construction,
+            -- this else branch is never taken. So I do need a seperate input for the base state.
+            sorry
+          }
+
+          -- I already wrote an induciton helper
+
+          have h_this_valid := Search.valid_plan_extend' P1 ht.action P2 (ht.action :: acc.actions)
+            acc.actions P2_from_p1 (rfl) (by {
+              simp
+              exact (Search.is_valid_plan_equiv P2 acc.actions).mp P2_valid_plan
+            })
+          sorry
+        }
+
+      } n
 
 /-
 Implementation of linear search that returns a certified solution.
 -/
-def linear_search_proved (initial_search_state : Search.SearchState) :
+def linear_search_proved {α : Type} (initial_search_state : Search.SearchState α) :
     Option (Search.Solution initial_search_state.plan) := do
   let _ := initial_search_state.step_decidable
   let _ := initial_search_state.steps_beq
@@ -180,34 +237,69 @@ def linear_search_proved (initial_search_state : Search.SearchState) :
   let _ := initial_search_state.plan.prop_decidable
   let _ := initial_search_state.plan.prop_repr
 
-  let rec bfs_loop (known_steps : @Std.HashMap (List initial_search_state.plan.Props) ((List initial_search_state.plan.Props) × (STRIPS.STRIPS_Operator initial_search_state.plan.Props)) initial_search_state.steps_beq initial_search_state.step_hashable)
-                   (steps_to_explore : List (List initial_search_state.plan.Props))
-                   (fuel : Nat) :
-                   Option (Search.Solution initial_search_state.plan) := do
+  let rec bfs_loop (known_steps : @Std.HashMap (List α)
+    (HashTarget initial_search_state)
+    initial_search_state.steps_beq initial_search_state.step_hashable)
+    (steps_to_explore : List (List α))
+    (fuel : Nat) :
+    Option (Search.Solution initial_search_state.plan) := do
     match fuel with
     | 0 => none
     | fuel' + 1 =>
       match steps_to_explore with
       | [] => none
       | cur_step :: tail =>
-        if Search.is_goal_reached initial_search_state cur_step then
-           match reconstruct_path_fuel_with_map initial_search_state known_steps cur_step [] 1000000 with
-           | none => none
-           | some actions =>
-             if h : Search.is_valid_plan initial_search_state.plan actions then
-               some { actions := actions, is_valid := h }
-             else
-               none
+        if h: Search.is_goal_reached initial_search_state cur_step then
+          -- Construct the trivial solution, of a search starting at the goal.
+          let base_state : Search.SearchState α :=
+            { initial_search_state with
+              known_steps := {}
+              plan := { initial_search_state.plan with current_state := cur_step }
+            }
+          have sol_from_goal :=
+            Search.trivial_solution_if_goal_reached base_state
+              (by {
+                simp_all [Search.is_goal_reached]
+                obtain ⟨goal_state, h_goal_in_goals, h_goal_subset⟩ := h
+                use goal_state
+              })
+          -- Just return the reconstruction now!
+          reconstruct_path_fuel_with_map initial_search_state known_steps cur_step
+            sol_from_goal 1000000
         else
           let mut new_known := known_steps
           let mut new_steps := tail
           for action in initial_search_state.plan.Actions do
+            have _ : Decidable (STRIPS.is_applicable' cur_step action) := by
+              unfold STRIPS.is_applicable'
+              infer_instance
             if STRIPS.is_applicable' cur_step action then
               let new_state := STRIPS.apply_action_if_applicable
                 { initial_search_state.plan with current_state := cur_step } action
               if ¬ new_known.contains new_state then
-                new_known := new_known.insert new_state (cur_step, action)
+                new_known := new_known.insert new_state {
+                  prev_state := cur_step, action := action, curr_state := new_state
+                  , h_action_transitions
+                    := by
+                    {
+                      unfold new_state
+                      unfold STRIPS.apply_action_if_applicable
+                      simp only
+                    }
+                  }
                 new_steps := new_steps ++ [new_state]
           bfs_loop new_known new_steps fuel'
 
-  bfs_loop initial_search_state.known_steps initial_search_state.steps_to_consider 1000000
+  -- We changed the type signature of known_steps to store HashTarget instead of a tuple.
+  -- This will clear the input hash map!
+  let my_known_steps : @Std.HashMap (List α)
+    (HashTarget initial_search_state)
+    initial_search_state.steps_beq initial_search_state.step_hashable :=
+    @Std.HashMap.emptyWithCapacity
+      (List α)
+      (HashTarget initial_search_state)
+      initial_search_state.steps_beq
+      initial_search_state.step_hashable
+      10
+
+  bfs_loop my_known_steps initial_search_state.steps_to_consider 1000000

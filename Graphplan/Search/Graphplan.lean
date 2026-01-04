@@ -301,13 +301,13 @@ end GraphplanSearch
 open GraphplanSearch
 open GraphplanSearch.Internal
 
-def graphplan_search (s : Search.SearchState) :
+def graphplan_search {α : Type} (s : Search.SearchState α) :
     Option (Search.partial_Solution s.plan) := do
   let _ := s.plan.prop_decidable
   let _ := s.plan.prop_hashable
 
   -- Finite universe for explicit negated literals.
-  let mut univ : List s.plan.Props := []
+  let mut univ : List α := []
   univ := univ ++ s.plan.current_state
   univ := univ ++ (s.plan.goal_states.flatMap id)
   for op in s.plan.Actions do
@@ -317,22 +317,22 @@ def graphplan_search (s : Search.SearchState) :
     univ := univ ++ op.del_effects
   univ := listEraseDups univ
 
-  let initProps : Std.HashSet (Lit s.plan.Props) :=
+  let initProps : Std.HashSet (Lit α) :=
     univ.foldl (init := Std.HashSet.emptyWithCapacity 256) (fun acc p =>
       if s.plan.current_state.contains p then
         acc.insert (.pos p)
       else
         acc.insert (.neg p))
 
-  let initMutex : Std.HashSet (Lit s.plan.Props × Lit s.plan.Props) :=
+  let initMutex : Std.HashSet (Lit α × Lit α) :=
     univ.foldl (init := Std.HashSet.emptyWithCapacity 256) (fun acc p =>
       acc.insert ((.pos p), (.neg p)) |>.insert ((.neg p), (.pos p)))
 
-  let mut propLevels : Array (PropLevel s.plan.Props) :=
+  let mut propLevels : Array (PropLevel α) :=
   #[{ props := initProps, mutex := initMutex }]
-  let mut actionLevels : Array (ActionLevel s.plan.Props) := #[]
+  let mut actionLevels : Array (ActionLevel α) := #[]
 
-  let goalSets : List (List (Lit s.plan.Props)) :=
+  let goalSets : List (List (Lit α)) :=
     s.plan.goal_states.map (fun gs => gs.map Lit.pos)
 
   let maxLevels := 60
@@ -342,27 +342,27 @@ def graphplan_search (s : Search.SearchState) :
     | none =>
       none
     | some pl =>
-      let al := computeActionLevel (P := s.plan.Props) s.plan.Actions pl
+      let al := computeActionLevel (P := α) s.plan.Actions pl
       actionLevels := actionLevels.push al
 
-      let nextProps := computeNextPropLevel (P := s.plan.Props) al
-      let nextMutex := computePropMutex (P := s.plan.Props) nextProps al
-      let nextPL : PropLevel s.plan.Props := { props := nextProps, mutex := nextMutex }
+      let nextProps := computeNextPropLevel (P := α) al
+      let nextMutex := computePropMutex (P := α) nextProps al
+      let nextPL : PropLevel α := { props := nextProps, mutex := nextMutex }
       propLevels := propLevels.push nextPL
 
       let curLevel := depth + 1
 
-      let mut found : Option (List (GPAction s.plan.Props)) := none
+      let mut found : Option (List (GPAction α)) := none
       for goals in goalSets do
         if found.isNone then
-          match extractPlan (P := s.plan.Props) propLevels actionLevels curLevel goals with
+          match extractPlan (P := α) propLevels actionLevels curLevel goals with
           | none => pure ()
           | some steps =>
             found := some (steps.flatMap id)
 
       match found with
       | some flat =>
-        let actionsOut : List (STRIPS.STRIPS_Operator s.plan.Props) :=
+        let actionsOut : List (STRIPS.STRIPS_Operator α) :=
           flat.foldr (init := []) (fun a acc =>
             match a.origin with
             | none => acc

@@ -21,9 +21,9 @@ structure STRIPS_Operator (Props : Type) where
 -- We define a STRIPS planning problem as a structure
 -- consisting of a set of propositions, a set of actions,
 -- an initial state, and a goal state.
-structure STRIPS_Plan where
+structure STRIPS_Plan (Props : Type) where
   -- The propositional variables in the planning problem
-  Props : Type
+  -- Props : Type := Props
   -- props_finite : Fintype Props
   -- We don't need Fintype for now, but we do need hashable for HashMap for efficient serach.
   prop_hashable : Hashable Props
@@ -41,8 +41,8 @@ structure STRIPS_Plan where
 
 
 -- Whether or not an action is applicable, only based on the state and the action itself
-def is_applicable' {sp : STRIPS_Plan} (state : List sp.Props)
-    (a : STRIPS_Operator sp.Props) : Prop :=
+def is_applicable' {α : Type} (state : List α)
+    (a : STRIPS_Operator α) : Prop :=
   -- The action is applicable if all its positive preconditions are in the state
   -- and none of its negative preconditions are in the state
   -- a.preconditions ⊆ state ∧ Disjoint a.neg_preconditions state
@@ -52,7 +52,7 @@ def is_applicable' {sp : STRIPS_Plan} (state : List sp.Props)
 
 
 -- Whether or not an action is applicable in a given state
-def is_applicable {sp : STRIPS_Plan} (a : STRIPS_Operator sp.Props) : Prop :=
+def is_applicable {α : Type} (sp : STRIPS_Plan α) (a : STRIPS_Operator α) : Prop :=
   -- The action is applicable if all its positive preconditions are in the state
   -- and none of its negative preconditions are in the state
   -- a.preconditions ⊆ sp.current_state ∧ Disjoint a.neg_preconditions sp.current_state
@@ -61,13 +61,14 @@ def is_applicable {sp : STRIPS_Plan} (a : STRIPS_Operator sp.Props) : Prop :=
     (∀ p ∈ a.neg_preconditions, p ∉ sp.current_state)
 
 -- All is_applicable proofs are decidable
-instance {sp : STRIPS_Plan} (a : STRIPS_Operator sp.Props) : Decidable (is_applicable a) := by
+instance {α : Type} {sp : STRIPS_Plan α} (a : STRIPS_Operator α) : Decidable (is_applicable sp a) :=
+by
   let _ := sp.prop_decidable
   unfold is_applicable
   exact instDecidableAnd
 
-instance {sp : STRIPS_Plan} (state : List sp.Props)
-    (a : STRIPS_Operator sp.Props) : Decidable (is_applicable' state a) := by
+instance {α : Type} {sp : STRIPS_Plan α} (state : List α)
+    (a : STRIPS_Operator α) : Decidable (is_applicable' state a) := by
   let _ := sp.prop_decidable
   unfold is_applicable'
   exact instDecidableAnd
@@ -81,31 +82,32 @@ instance {sp : STRIPS_Plan} (state : List sp.Props)
 
 
 -- Applies the action, given a proof that it is applicable
-def apply_action_with_proof (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
-    (_ : is_applicable a) : List sp.Props :=
+def apply_action_with_proof {α : Type} (sp : STRIPS_Plan α) (a : STRIPS_Operator α)
+    (_ : is_applicable sp a) : List α :=
   -- apply_action a
   let _ := sp.prop_decidable
   ((sp.current_state.filter (¬ a.del_effects.contains ·)) ++ a.add_effects).dedup
 
 -- Applies an action, but only if it is applicable
-def apply_action_if_applicable (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props) : List sp.Props :=
+def apply_action_if_applicable {α : Type} (sp : STRIPS_Plan α) (a : STRIPS_Operator α) : List α :=
   let _ := sp.prop_decidable
-  let _ : (Decidable (is_applicable a)) := by -- Proof that is_applicable is decidable
+  let _ : (Decidable (is_applicable sp a)) := by -- Proof that is_applicable is decidable
     unfold is_applicable
     exact instDecidableAnd
-  if h : is_applicable a then
+  if h : is_applicable sp a then
     apply_action_with_proof sp a h
   else
     sp.current_state -- Does nothing if not applicable
 
 -- Applies the action, given a proof, returning the new state
-def apply_action' (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props)
-    (h : is_applicable a) : STRIPS_Plan :=
+def apply_action' {α : Type} (sp : STRIPS_Plan α) (a : STRIPS_Operator α)
+    (h : is_applicable sp a) : STRIPS_Plan α :=
   { sp with current_state := apply_action_with_proof sp a h}
   -- Wait, this is a monad, right?
 
 -- Applied the action if applicable, returning the new state
-def apply_action_if_applicable' (sp : STRIPS_Plan) (a : STRIPS_Operator sp.Props) : STRIPS_Plan :=
+def apply_action_if_applicable' {α : Type} (sp : STRIPS_Plan α) (a : STRIPS_Operator α)
+: STRIPS_Plan α :=
   let new_list := apply_action_if_applicable sp a
   { sp with current_state := new_list }
 
