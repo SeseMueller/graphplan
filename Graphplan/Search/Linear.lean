@@ -178,12 +178,18 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
   | n + 1 =>
 
     let _ := s.step_decidable
-    if h : current_state = s.plan.current_state then
+    have h_acc_cur_step_eq_cur_step : acc._P.current_state = current_state := by {
+      simp_all
+      have this : acc._P = { s.plan with current_state := current_state } := by {
+        let aP := acc._P
+        simp only [Lean.Elab.WF.paramLet] at acc ⊢
+        exact Eq.symm acc.h_P_eq_P
+      }
+      rw [this]
+    }
+    if h : Search.is_valid_plan s.plan acc.actions then
       some { actions := acc.actions
-             is_valid := by {
-              have h_prev_valid := acc.is_valid
-              simp_all
-             }  }
+             is_valid := h  }
     else
       match @Search.find_in_hashmap? (List α)
         (HashTarget s)
@@ -191,6 +197,13 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
       | none => none
       | some ht => reconstruct_path_fuel_with_map s known_steps ht.prev_state {
           actions := ht.action :: acc.actions, is_valid := by {
+
+          -- Note: I need a modified Hashmap that stores the fact that the key is
+          -- contained in the value, to avoid re-proving it here.
+          have h_ht_cur_state_eq_cur_state : ht.curr_state = current_state := by {
+            sorry
+          }
+
           -- First, the fact that the previous actions are valid
           have h_prev_valid := acc.is_valid
           have h_ht_trans := ht.h_action_transitions
@@ -199,19 +212,31 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
           let P1 := { s.plan with current_state := ht.prev_state }
           let P2 := { s.plan with current_state := ht.curr_state }
 
+          -- Show that the plan from acc.is_valid is exactly P2.
+          have h_acc_has_P2 : acc._P = P2 := by {
+            simp [P2]
+            rw [← acc.h_P_eq_P]
+            simp
+            symm
+            exact h_ht_cur_state_eq_cur_state
+          }
+
           have P2_from_p1 : P2 = { P1 with
             current_state := STRIPS.apply_action_if_applicable P1 (ht.action) } := by {
               simp_all
               unfold P2 P1
               simp
               rw [h_ht_trans]
+              exact h_acc_cur_step_eq_cur_step
             }
           have P2_valid_plan : Search.is_valid_plan P2 (acc.actions) = true := by {
             simp
             -- Hm. Something is wrong. the active state "current_state" should always agree with the
             -- current state of the accumulator... Oh, right. By construction,
             -- this else branch is never taken. So I do need a seperate input for the base state.
-            sorry
+            rw [← h_acc_has_P2]
+            simp_all
+            exact h_prev_valid
           }
 
           -- I already wrote an induciton helper
@@ -221,7 +246,14 @@ def reconstruct_path_fuel_with_map {α : Type} (s : Search.SearchState α)
               simp
               exact (Search.is_valid_plan_equiv P2 acc.actions).mp P2_valid_plan
             })
-          sorry
+          rw [Search.is_valid_plan_equiv]
+          have test : P1 = (let __src := s.plan;
+            { prop_hashable := __src.prop_hashable, prop_decidable := __src.prop_decidable, prop_repr := __src.prop_repr,
+              Actions := __src.Actions, current_state := ht.prev_state, goal_states := __src.goal_states }) := by {
+                rfl
+              }
+          rw [← test]
+          simp_all
         }
 
       } n

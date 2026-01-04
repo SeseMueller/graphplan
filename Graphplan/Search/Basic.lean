@@ -111,6 +111,8 @@ structure Solution {α : Type} (P : STRIPS_Plan α) where
   actions : List (STRIPS_Operator α)
 
   is_valid : is_valid_plan P actions = true
+  _P : STRIPS_Plan α := P
+  h_P_eq_P : P = _P := by rfl
 
 structure partial_Solution {α : Type} (P : STRIPS_Plan α) where
   actions : List (STRIPS_Operator α)
