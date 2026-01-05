@@ -279,31 +279,69 @@ even when the solution is only TODO states away.
 This weakness of breadth-first search is alleviated quite a bit in graphplan %TODO: "alleviated" doesn't fit, it's more like "fixed"
 %TODO: is the memory footprint of graphplan really better? DO the mutexes not take up an exponential amount of memory?
 
-A small section on linear search, the search algorithm implemented
-in the recommended Github repository. 
-Should definitely be using terminology from the lecture.
+% A small section on linear search, the search algorithm implemented
+% in the recommended Github repository. 
+% Should definitely be using terminology from the lecture.
 %TOOD: check terminology!
 
 Also maybe a few notes on the implementation in LEAN. 
 
+% The figure showing the planning graph, from the paper
+\begin{figure*}
+  \label{Figure 1}
+  \centering
+  \includegraphics[width=500pt]{Graphplan_Planning_Graph.png}
+  \caption{Figure 1: The planning graph of Graphplan on the rocket problem. Configuration: One Rocket, 
+  two pieces of cargo, A and B, one start Location L, one destination R. }
+\end{figure*}
+
 \section{Graphplan}
 \label{sec:graphplan}
 
-A short introduction of Graphplan, with main idea and angle of attack.
+The Graphplan algorithm does not attack the STRIPS problem by searching the state space, but by creating a 
+planning graph instead. The planning graph that the algorithm creates during the search phase alternates between
+state layers and action layers (see Figure 1). % couldn't get the \ref working well. TODO?
+It starts with a state layer consisting of all propositions of the starting state.
+Each layer also has a set of mutexes, defining which pair of states or actions cannot coexist
+(i.e. are mutually exclusive), that is, no valid plan could possibly contain both,
+either because they have competing requirements or inconsistent effects.
 
 \subsection{Functionalilty; Algorithm}
 \label{sec:graphplan_functionality}
 
-A longer section on how graphplan actually works, very mathematical. 
-Probably even the mathematical description of the algorithm.
-Again, with terminology from the lecture.
+% A longer section on how graphplan actually works, very mathematical. 
+% Probably even the mathematical description of the algorithm.
+% Again, with terminology from the lecture.
 
+
+From any state layer, the action layer can be constructed by generating all actions whose preconditions are
+in the state layer such that no pair of preconditions have a mutex. Additionally, all pairs of destinct actions
+need to be marked mutex if they interfere or have competing needs. Two actions interfere if either deletes
+a precondition or effect of the other. Two actions have competing needs if there exists a precondition of one
+action that is mutex with another precondition of the other action. 
+
+In order to generate a state layer from the previous action layer and its state layer, all propositions from
+the source state layer are copied over, maintaining mutexes. A new proposition is added if there is an 
+action that has it as an add-effect. 
+Mutexes are then updated: for each pair of prepositions in a state layer, if the action causing one preposition
+is mutex with the action causing the other preposition, for all possible source actions causing both propositions, 
+then this pair is mutually exclusive. Mutexes from previous layers can be removed is there are two actions 
+with no mutex, each causing one of the propositions. 
+
+
+%TODO: should I cite the graphplan paper in this situation?
+%TODO: recheck mutex behaviour?
 
 \subsection{Applying Graphplan}
 \label{sec:graphplan_applying}
 
-Applycation of graphplan to the same problem. 
-Best if the visualization/problem shows the strengths of graphplan.
+By abstracting over the states and instead searching through its own data structure, the Graphplan algorithm
+scales much better 
+
+%Probably insert the table of performance across problems? 
+
+% Application of graphplan to the same problem. 
+% Best if the visualization/problem shows the strengths of graphplan.
 %TODO: maybe also write a bit about extensions to Graphplan? there are many papers on that... 
 
 \section{Lean}
