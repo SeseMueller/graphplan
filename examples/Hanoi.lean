@@ -3,6 +3,8 @@ import Mathlib.Tactic.DeriveFintype
 import Graphplan.Search.Graphplan
 import Graphplan.Search.Linear
 import Graphplan.Search.Linear_Heuristic
+import Mathlib.Data.Real.Basic
+import Std.Time
 
 -- This example models the classic Towers of Hanoi problem using the Graphplan framework.
 
@@ -134,29 +136,64 @@ def action_name {n : Nat} (action : STRIPS_Operator (HanoiProp n)) : Option Stri
   let action_array := All_Actions
   action_array.find? (fun (op, _) => op == action) |>.map (·.2)
 
--- Use Graphplan search to solve the Towers of Hanoi problem with n disks
-def initial_search_state (n : Nat) :=
-  Search.mk_search_state (Hanoi_Problem n)
-def size := 5
--- def solution := graphplan_search (initial_search_state size)
--- def solution := heuristic_search (initial_search_state size)
-def solution := linear_search_proved (initial_search_state size)
--- def solution := linear_search (initial_search_state size)
 
--- Is the solution valid?
-def solution_valid :=
-  match solution with
-  | none => false
-  | some sol => Search.is_valid_plan (Hanoi_Problem size) sol.actions
-#eval solution_valid
+def measure_runtime_solver_hanoi (n : Nat) : IO (Std.Time.Nanosecond.Offset × Bool) := do
+
+  -- Start time measurement
+  let this_time := ← Std.Time.Timestamp.now
+
+  -- Use Graphplan search to solve the Towers of Hanoi problem with n disks
+  let initial_search_state :=
+    Search.mk_search_state (Hanoi_Problem n)
+
+  let solution := graphplan_search (initial_search_state)
+  -- let solution := heuristic_search (initial_search_state)
+  -- let solution := linear_search_proved (initial_search_state)
+  -- let solution := linear_search (initial_search_state)
+  dbg_trace s!"Solved Hanoi with {n} disks. Solution:
+    {repr (solution.map fun s => s.actions.map action_name)}"
+
+  -- Is the solution valid?
+  let solution_valid :=
+    match solution with
+    | none => false
+    | some sol => Search.is_valid_plan (Hanoi_Problem n) sol.actions
+
+  -- End time measurement
+  let end_time := ← Std.Time.Timestamp.now
+  let start_nano := this_time.toNanosecondsSinceUnixEpoch
+  let end_nano := end_time.toNanosecondsSinceUnixEpoch
+  let duration_ns := end_nano - start_nano
+
+  return (duration_ns, solution_valid)
+
+#eval measure_runtime_solver_hanoi 3
+
+def measure_runtime_solver_hanoi_multiple_times (n : Nat) (tries : Nat) :
+    IO (Std.Time.Nanosecond.Offset × Bool) := do
+
+  let mut total_time : Std.Time.Nanosecond.Offset  := 0
+  let mut total_valid := true
+
+  -- Iterate for tries times
+  for _ in List.finRange tries do
+    let (measure, sol_valid) := ← measure_runtime_solver_hanoi n
+    total_time := total_time + measure
+    total_valid := total_valid && sol_valid
+
+  return (total_time, total_valid)
 
 
-def solution_names :=
-  solution.map (fun sol =>
-    sol.actions.map (fun op =>
-      match action_name op with
-      | some name => name
-      | none => "Unknown Action"))
+def main : IO Unit := do
+  let n := 4 -- Number of disks
+  let tries := 100 -- Number of times to run the solver
 
--- #eval solution_names
-#eval solution.map (fun sol => sol.actions.length)
+  let (total_time, all_valid) := ← measure_runtime_solver_hanoi_multiple_times n tries
+
+  let total_ms := total_time.toMilliseconds
+  let avg_time := total_time.toMilliseconds.1 / tries
+
+  IO.println s!"Towers of Hanoi with {n} disks solved {tries} times."
+  IO.println s!"Total time: {total_ms} milliseconds."
+  IO.println s!"Average time per run: {avg_time} milliseconds."
+  IO.println s!"All solutions valid: {all_valid}."

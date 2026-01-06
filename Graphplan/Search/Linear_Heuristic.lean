@@ -20,7 +20,7 @@ def state_heuristic {α : Type} (search_state : Search.SearchState α)
   -- For now, take the maximum length as the heuristic value
   goal_lengths.foldl Nat.max 0
 
-abbrev Step {α : Type} (s : Search.SearchState α) := List α
+abbrev Step {α : Type} (_ : Search.SearchState α) := List α
 
 -- Heuristic buckets: each bucket stores a FIFO queue of steps (as an Array)
 -- together with the bucket's heuristic value.

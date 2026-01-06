@@ -26,3 +26,7 @@ name = "Graphplan"
 [[lean_exe]]
 name = "debug"
 root = "Graphplan"
+
+[[lean_exe]]
+name = "Hanoi-test"
+root = "examples.Hanoi"

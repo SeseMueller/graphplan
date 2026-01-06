@@ -56,12 +56,6 @@ structure ActionLevel (P : Type) [BEq (Lit P)] [Hashable (Lit P)] where
 
 namespace Internal
 
-def listEraseDups {α : Type} [DecidableEq α] : List α -> List α
-  | [] => []
-  | x :: xs =>
-    let xs' := listEraseDups xs
-    if xs'.contains x then xs' else x :: xs'
-
 def insertByHash {α : Type} [Hashable α] (x : α) : List α -> List α
   | [] => [x]
   | y :: ys =>
@@ -69,7 +63,7 @@ def insertByHash {α : Type} [Hashable α] (x : α) : List α -> List α
     else y :: insertByHash x ys
 
 def normalizeGoals {α : Type} [DecidableEq α] [Hashable α] (xs : List α) : List α :=
-  let dedup := listEraseDups xs
+  let dedup := xs.dedup
   dedup.foldl (fun acc x => insertByHash x acc) []
 
 def hashSetEq {α : Type} [BEq α] [Hashable α] (a b : Std.HashSet α) : Bool :=
@@ -214,14 +208,6 @@ def computePropMutex {P : Type}
             m := m.insert (q, p)
     m
 
-def find_in_hashmap? {K V : Type} [BEq K] [Hashable K]
-    (hm : Std.HashMap K V) (key : K) : Option V := do
-  for (k, v) in hm do
-    if k == key then
-      return  v
-  none
-
-
 mutual
 
   partial def _solve {P : Type} [DecidableEq P] [Hashable P] [DecidableEq (Lit P)] [BEq (Lit P)]
@@ -243,8 +229,7 @@ mutual
                 if achievedByChosen chosen g then
                   _solve gs chosen al achievedByChosen propLevels actionLevels level
                 else
-                  -- match al.producers.find? g with
-                  match find_in_hashmap? al.producers g with
+                  match al.producers.get? g with
                   | none => none
                   | some prodList =>
                     let rec tryProds : List Nat -> Option (List (List (GPAction P)))
@@ -301,7 +286,7 @@ end GraphplanSearch
 open GraphplanSearch
 open GraphplanSearch.Internal
 
-def graphplan_search {α : Type} (s : Search.SearchState α) :
+def graphplan_search {α : Type} (s : Search.SearchState α) [Repr α] :
     Option (Search.partial_Solution s.plan) := do
   let _ := s.plan.prop_decidable
   let _ := s.plan.prop_hashable
@@ -315,7 +300,7 @@ def graphplan_search {α : Type} (s : Search.SearchState α) :
     univ := univ ++ op.neg_preconditions
     univ := univ ++ op.add_effects
     univ := univ ++ op.del_effects
-  univ := listEraseDups univ
+  univ := univ.dedup
 
   let initProps : Std.HashSet (Lit α) :=
     univ.foldl (init := Std.HashSet.emptyWithCapacity 256) (fun acc p =>
@@ -340,6 +325,7 @@ def graphplan_search {α : Type} (s : Search.SearchState α) :
   for depth in [0:maxLevels] do
     match propLevels[depth]? with
     | none =>
+      dbg_trace "Graphplan: ran out of prop levels"
       none
     | some pl =>
       let al := computeActionLevel (P := α) s.plan.Actions pl
@@ -371,6 +357,10 @@ def graphplan_search {α : Type} (s : Search.SearchState α) :
       | none =>
         if depth > 0 then
           if hashSetEq pl.props nextPL.props && hashSetEq pl.mutex nextPL.mutex then
+            dbg_trace "Graphplan: reached fixed point without finding a solution"
+            -- dbg_trace s!"Final prop level: {repr pl.props.toList}"
+            -- dbg_trace s!"Final mutexes: {repr pl.mutex.toList}"
             none
 
+  dbg_trace "Graphplan: reached max levels without finding a solution"
   none
