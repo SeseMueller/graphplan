@@ -30,3 +30,7 @@ root = "Graphplan"
 [[lean_exe]]
 name = "Hanoi-test"
 root = "examples.Hanoi"
+
+[[lean_exe]]
+name = "Rocket-test"
+root = "examples.RocketN"

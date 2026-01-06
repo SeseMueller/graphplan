@@ -167,7 +167,7 @@ def measure_runtime_solver_hanoi (n : Nat) : IO (Std.Time.Nanosecond.Offset × B
 
   return (duration_ns, solution_valid)
 
-#eval measure_runtime_solver_hanoi 3
+-- #eval measure_runtime_solver_hanoi 3
 
 def measure_runtime_solver_hanoi_multiple_times (n : Nat) (tries : Nat) :
     IO (Std.Time.Nanosecond.Offset × Bool) := do

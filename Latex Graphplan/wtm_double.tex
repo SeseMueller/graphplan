@@ -332,18 +332,6 @@ with no mutex, each causing one of the propositions.
 %TODO: should I cite the graphplan paper in this situation?
 %TODO: recheck mutex behaviour?
 
-\subsection{Applying Graphplan}
-\label{sec:graphplan_applying}
-
-By abstracting over the states and instead searching through its own data structure, the Graphplan algorithm
-scales much better as the problem increases both in complexity and in solution length. %TODO: show table! 
-
-%Probably insert the table of performance across problems? 
-
-% Application of graphplan to the same problem. 
-% Best if the visualization/problem shows the strengths of graphplan.
-%TODO: maybe also write a bit about extensions to Graphplan? there are many papers on that... 
-
 \section{Lean}
 \label{sec:lean}
 
@@ -435,11 +423,45 @@ For the same reasons and also due to the higher complexity, there are currently 
 
 All code for this paper can be read on Github \cite{githubRepo}. 
 
-\subsection{Solving with LLM}
-\label{sec:implementation_llm}
+\begin{figure}
+  \label{Figure 2}
+  \centering
+  \includegraphics[width = 240pt]{Performance_on_RocketN.png}
+  \caption{ Figure 2: Performance of four different algorithms on the Rocket problem
+  with n pieces of cargo with alternating destinations, in ms}
+\end{figure}
 
-If wanted/necessary (since the topic list mentioned it) , a section on
-getting an LLM to try to solve the problem, probably using the DSL for simplicity. 
+\section{Performance}
+\label{sec:results}
+
+By abstracting over the states and instead searching through its own data structure, the Graphplan algorithm
+scales much better as the problem increases both in complexity and in solution length. %TODO: show table! 
+Notably, while for most problems, the state space grows exponentially in the solution length (and therefore
+also the space and time complexity of state-space based algorithms), the Graphplan
+algorithm has both a time and space complexity polynomial in the number of objects, propositions in the initial
+conditions, number of actions and longest list of effects of any action. \cite{blum1997fast}
+
+Taking the example from the Graphplan paper, consider a rocket-based cargo transport environment. 
+There are two rockets at the start $S$ and $n$ pieces of cargo should arrive at destination $D1$ or $D2$ depending
+on whether they are even or odd. Both rockets start with fuel but cannot be refueled.
+The cargo can be loaded into and out of the rockets. 
+A general solution for $n>1$ is: Load all even cargo into Rocket 1 ($\lfloor \frac{n}{2}\rfloor$ steps),
+load all odd cargo into rocket 2 ($\lceil \frac{n}{2}\rceil$ steps), fly rocket 1 to destination 1 and rocket 2 to
+destination 2 (2 steps), unload all even cargo from Rocket 1 ($\lfloor \frac{n}{2}\rfloor$ steps),
+unload all odd cargo from rocket 2 ($\lceil \frac{n}{2}\rceil$ steps), leading to $2n+2$ steps in total. 
+This problem has the interesting property that it has a very large state space but linearly growing solution length,
+leading to very long solving times for algorithms that explore the state space, such as breadth-first search or even best-first search 
+(see Figure 2). 
+However, the solution can be represented very well in a planning graph due to the low number of propositions, 
+leading to very fast solutions, as can be seen in Figure 2. 
+Additionally, the graphplan algorithm can solve the Rocket problem with 57 pieces of cargo in the same time
+it takes the Best First algorithm to solve it with four pieces of cargo (both about 480ms). 
+
+%Probably insert the table of performance across problems? 
+
+% Application of graphplan to the same problem. 
+% Best if the visualization/problem shows the strengths of graphplan.
+%TODO: maybe also write a bit about extensions to Graphplan? there are many papers on that... 
 
 \section{Conclusion}
 \label{sec:conclusion}
