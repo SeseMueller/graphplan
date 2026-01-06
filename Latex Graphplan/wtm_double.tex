@@ -182,7 +182,7 @@ as well as a formally verified breadth-first search for the STRIPS domain.
 % TODO: what is a Problem language named? just "problem language"? maybe check out lecture. 
 The Stanford Research Institute Problem Solver (STRIPS) is both a planning domain and problem solver 
 developed in 1971 at the Stanford Research Institute in California. \cite{fikes1971strips}
-This paper will focus on the planning domain, as its instances are the input of the graphplan algorithm.
+This paper will focus on the planning domain, as its instances are the input of the Graphplan algorithm.
 
 The problem space of the STRIPS planning language is that of a single agent in a static state that can only be transformed 
 into another static state using an action from a set of available actions. It "[…] is often cited as providing
@@ -235,7 +235,7 @@ contains free variables. \cite{gnad2019learning}
 An example of a STRIPS problem also described in the paper is that of a rocket-based cargo-hauling 
 operation. The primitives of this STRIPS instance are the places, the rockets and the cargo (see also Figure 1).
 The three predicates are "At", "In" and "HasFuel", with two, two and one free variables respectively. %TODO: Graphics??
-The first action is "Load", with three free variables that have to implement the predicates CARGO, ROCKET and PLACE respecitively.
+The first action is "Load", with three free variables that have to implement the predicates CARGO, ROCKET and PLACE respectively.
 It requires the rocket to be "At" the place, and the cargo to be "At" the place and leads to the cargo being "In" the rocket and the cargo no longer being "At" the place.
 The second action, "Unload", has the same free variables and predicate requirement as "Load", but instead requires the rocket to be "At" the place
 and the object to be "In" the rocket and leads to the object being "At" the place and not being "In" the rocket anymore.
@@ -253,13 +253,13 @@ One can however translate a STRIPS implementation with multiple possible goal st
 goal while preserving validity by adding a new predicate without propositions, $goal\_achieved$, setting it as the new goal and creating
 a new action for each of the multiple goal states that requires the old goal to be set, and sets the goal proposition. %TODO: prove?
 
-The implementation of graphplan this paper presents uses multiple goals, as searches with a heuristic perform better (see \ref{sec:results} for experimental evidence). %TODO: ?? prove? explain?
+The implementation of Graphplan this paper presents uses multiple goals, as searches with a heuristic perform better (see \ref{sec:results} for experimental evidence). %TODO: ?? prove? explain?
 
 \subsection{Applications}
 \label{sec:strips_applications}
 
 %TODO: reword
-Despite the advent of more expressive planning domains, such as PDDL, applications of STRIPS is still being researched,
+Despite the advent of more expressive planning domains, such as PDDL, applications of STRIPS are still being researched,
 mainly due to its simplicity and interpretability \cite{aeronautiques1998pddl} \cite{gnad2019learning} \cite{fikes1993strips}.
 STRIPS can still be used in autonomous agents having to plan out a series of actions while knowing all actions they could take. 
 Its downsides are mainly in the fact that it is very limited in the kinds of worlds it can model, in contrast to domains such as PDDL, 
@@ -313,7 +313,7 @@ Each layer also has a set of mutexes, defining which pair of states or actions c
 (i.e. are mutually exclusive), that is, no valid plan could possibly contain both,
 either because they have competing requirements or inconsistent effects.
 
-\subsection{Functionalilty; Algorithm}
+\subsection{Functionality; Algorithm}
 \label{sec:graphplan_functionality}
 
 % A longer section on how graphplan actually works, very mathematical. 
@@ -322,7 +322,7 @@ either because they have competing requirements or inconsistent effects.
 
 
 From any state layer, the action layer can be constructed by generating all actions whose preconditions are
-in the state layer such that no pair of preconditions have a mutex. Additionally, all pairs of destinct actions
+in the state layer such that no pair of preconditions have a mutex. Additionally, all pairs of distinct actions
 need to be marked mutex if they interfere or have competing needs. Two actions interfere if either deletes
 a precondition or effect of the other. Two actions have competing needs if there exists a precondition of one
 action that is mutex with another precondition of the other action. \cite{blum1997fast}
@@ -371,7 +371,7 @@ It uses the calculus of constructions, a dependent type theory that allows the e
 complicated types, as well as propositions and proofs thanks to the Curry-Howard isomorphism \cite{theoremProvingInLean4}.
 
 Using the isomorphism, all propositions expressible in Lean are represented by the kernel as a type
-which is inhabited iff the corresponsing proposition is true. Proving a proposition in Lean thus
+which is inhabited iff the corresponding proposition is true. Proving a proposition in Lean thus
 reduces to the problem of producing an element of that propositions type.
 Since the content of the element of the proposition is irrelevant (a single element proves that the
 proposition is inhabited and thus true), Lean also applies the concept of proof irrelevance, where
@@ -416,7 +416,7 @@ Part of the code for this implementation was generated by Aristotle, a harness f
 allowing them to generate proofs \cite{aristotle}. However, the generated code did not properly prove the correctness of the algorithm,
 and instead, before returning the result, checked whether it was correct. It could then simply return this as
 a proof of the correctness or return that no solution was found, if the constructed path was incorrect. 
-A proper solution that proves that the backtracing can only result in a proper solution without having to check, 
+A proper solution that proves that the backtracking can only result in a proper solution without having to check, 
 was later written manually, leaving less than a fourth of the code generated by Aristotle. 
 
 Note the proof of correctness is only for the result that is returned, not for the entire algorithm, in that 
@@ -424,7 +424,7 @@ it was not %TODO remove?
 proven that the algorithm always returns a solution if one exists, only that if it does return a solution, it is correct.
 Proving the latter is considerably less complex than the former, as that would require proving both that
 each cycle in the memoization hashmap passes through the starting point and that both recursive functions always terminate. 
-For the same reasons and also due to the higher complexity, there are currently no proofs for the graphplan implementation
+For the same reasons and also due to the higher complexity, there are currently no proofs for the Graphplan implementation
 or for the optimality of the breadth-first search implementation. 
 
 All code for this paper can be read on Github \cite{githubRepo}. 
@@ -464,7 +464,7 @@ The heuristic search algorithm also has better performance than the breadth-firs
 cargo more before also requiring more than five minutes to find a solution. 
 Note that the direct breadth-first search implementation is slightly faster than the implementation with proof
 since the latter uses worse data structures and algorithms in order to simplify the proof. 
-Additionally, the graphplan algorithm can solve the Rocket problem with 57 pieces of cargo in the same time
+Additionally, the Graphplan algorithm can solve the Rocket problem with 57 pieces of cargo in the same time
 it takes the Best First algorithm to solve it with four pieces of cargo (both about 480ms). 
 
 %Probably insert the table of performance across problems? 
