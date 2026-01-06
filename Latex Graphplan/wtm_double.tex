@@ -162,14 +162,15 @@
 \maketitle
 
 \begin{abstract}
-  The graphplan algorithm in the STRIPS problem space %TODO: do I need to refer to the STRIPS section here as well??
-is an 
-
-
-  Graphplan is an algorithm in the field of planning algorithms. 
-  It works on a STRIPS (Stanford Research Institute Problem Solver) problem; 
-  this problem format is introduced in section 1.
-  % \lipsum[2]
+%   The graphplan algorithm in the STRIPS problem space %TODO: do I need to refer to the STRIPS section here as well??
+% is an 
+The STRIPS planning domain is a simple yet powerful way of encoding single-agent static-world time-discrete
+planning problems (see \ref{sec:strips}). 
+The Graphplan algorithm solves problems in STRIPS domains, not by traversing the state space graph,
+as an algorithm such as $A^*$ would do, but rather by constructing a planning graph, which
+represents which propositions can be produced and which are mutually exclusive, leading to high space and time efficiency.  %TODO: refer to the section?
+This paper presents an implementation of STRIPS and Graphplan in the Lean programming language and theorem prover, 
+as well as a formally verified breadth-first search for the STRIPS domain.
 
 \end{abstract}
 
@@ -179,55 +180,64 @@ is an
 \label{sec:strips}
 
 % TODO: what is a Problem language named? just "problem language"? maybe check out lecture. 
-The Stanford Research Institute Problem Solver (STRIPS) is both a problem language and problem solver 
+The Stanford Research Institute Problem Solver (STRIPS) is both a planning domain and problem solver 
 developed in 1971 at the Stanford Research Institute in California. \cite{fikes1971strips}
-This paper will focus on the problem language, as it is used in the input of the graphplan algorithm.
+This paper will focus on the planning domain, as its instances are the input of the graphplan algorithm.
 
 The problem space of the STRIPS planning language is that of a single agent in a static state that can only be transformed 
 into another static state using an action from a set of available actions. It "[…] is often cited as providing
 a seminal framework for attacking [this] 'classical planning problem' […]" \cite{fikes1993strips}. 
 %TODO: reorder, this doesn't fit well here but should probably be said.
 
+\subsection{The Problem space}
+\label{subsec:problem_space}
+
 %TODO: look at the solver the paper used and compare it to linear search and graphplan
-STRIPS operates in a closed world of first-order predicate logic. The "variables" %TODO: reword
-the problem operates on are predicates on zero or more primitives, and all predicates that aren't known to be true 
-are assumed to be false. %TODO: explain primitives?
-The problem space for an instance of STRIPS consists of the initial conditions, the goal conditions,
+STRIPS operates in a closed world of first-order predicate logic.
+Instances of the STRIPS domain operate on predicates with zero or more primitives, and all predicates that aren't known to be true 
+are assumed to be false.
+The problem space for an instance of STRIPS consists of the initial conditions (predicates), the goal conditions,
 as well as the set of available operators (also called actions).
-Each action consists of a set of variables that must be set for the action to be possible, a set of variables that 
-must not be set for the action to be possible, a set of variables that is set to be true after the action is taken,
-and a set of variables that is set to not be true after an action is taken. 
-Note that in the formal description of an instance of STRIPS, the actions do not have free variables; 
-each action is enumerated with each combination of primitives it can take on. For brevity and reduced memory usage,
-the written descriptions of STRIPS instances as well as some implementations do use free variables, but these are % TODO: which implementations? Reword or research
+Each action consists of a set of predicates that must be set for the action to be possible, a set of predicates that 
+must not be set for the action to be possible (both called preconditions), a set of predicates that is set to be true after the action is taken (add-effects), 
+and a set of predicates that is set to not be true after an action is taken (delete-effects). 
+
+Note that in the formal description of the STRIPS domain, the actions do not have free variables; 
+each action is instantiated with all combination of primitives it can take on. For brevity,
+the written descriptions of STRIPS instances do use free variables, but these are
 mathematically equivalent. %TODO: reword
 Instantiating expressions with free variables into all possible combinations is called grounding and is known cause the problem
 size to explode, as the size of a fully grounded STRIPS instance can be exponentially larger than the informal description that
 contains free variables. \cite{gnad2019learning}
 
-In standard STRIPS instances, the primitives are simple objects with no additional information besides their 
-name. This means that they do not have a type that can be used to group like primitives (for example, rockets and cargo)
-together. In order to still be able to limit actions to specific primitives, predicates are used instead of types,
-supplied in the initial conditions and never allowed to change through actions. In the Rockets-example from the paper about graphplan, %TODO: allowed to change? reowrd
-the LOAD and UNLOAD actions have three free variables that can only be occupied by cargo, rockets and places respecitively.\cite{blum1997fast}
-In order to force the primitives to respect this limitation, each cargo primitive is assigned the CARGO predicate in the initial conditions,
-each rocket primitive the ROCKET predicate and each place the PLACE predicate. Then the actions can require the first primitive to
-have the CARGO predicate, the second the ROCKET predicate and the third the PLACE predicate, thus successfully implementing the limitations. 
+% In standard STRIPS instances, the primitives are simple objects with no additional information besides their 
+% name. This means that they do not have a type that can be used to group like primitives (for example, rockets and cargo)
+% together. In order to still be able to limit actions to specific primitives, predicates are used instead of types,
+% supplied in the initial conditions and never allowed to change through actions. In the Rockets-example from the paper about graphplan, %TODO: allowed to change? reowrd
+% the LOAD and UNLOAD actions have three free variables that can only be occupied by cargo, rockets and places respecitively.\cite{blum1997fast}
+% In order to force the primitives to respect this limitation, each cargo primitive is assigned the CARGO predicate in the initial conditions,
+% each rocket primitive the ROCKET predicate and each place the PLACE predicate. Then the actions can require the first primitive to
+% have the CARGO predicate, the second the ROCKET predicate and the third the PLACE predicate, thus successfully implementing the limitations. 
+
 %TODO: write about implicit typing in STRIPS problems? It might make this paragraph a bit too long...
 % But I should probably write about it because the Graphplan paper does a lot of implicit typing and the rocket example
 % kinda is ambiguous based on whether the "In" relation can be between two rockets.... 
+% Oh, one instance of the problem allows this and mentions it in the comments. Hm. 
 
 %TODO: manage citations? where should the graphplan paper be cited?
 
 %TODO: add distinction between problem world and problem instance?
 
+\subsection{Example}
+\label{subsec:strips_example}
+
 %TODO: reword, this also repeats what the above paragraph says.
 An example of a STRIPS problem also described in the paper is that of a rocket-based cargo-hauling 
-operation. The primitives of this STRIPS instance are the places, the rockets and the cargo.
+operation. The primitives of this STRIPS instance are the places, the rockets and the cargo (see also Figure 1).
 The three predicates are "At", "In" and "HasFuel", with two, two and one free variables respectively. %TODO: Graphics??
 The first action is "Load", with three free variables that have to implement the predicates CARGO, ROCKET and PLACE respecitively.
 It requires the rocket to be "At" the place, and the cargo to be "At" the place and leads to the cargo being "In" the rocket and the cargo no longer being "At" the place.
-The second action, "Unload", has the same variables and predicate requirement as "Load", but instead requires the rocket to be "At" the place
+The second action, "Unload", has the same free variables and predicate requirement as "Load", but instead requires the rocket to be "At" the place
 and the object to be "In" the rocket and leads to the object being "At" the place and not being "In" the rocket anymore.
 The last action, "Move" has three free variables, where the first is required to have the "Rocket" predicate and the second and third
 the "Place" predicate. It requires the rocket to have the "HasFuel" predicate and the rocket to be "At" the first place. 
@@ -236,55 +246,52 @@ It leads to the rocket being "At" the second place, the rocket not being "At" th
 
 %TODO: write about all the small details of STRIPS in the Lean implementation section!
 
-%TODO: give examples of which STRIPS implementations disagree
 Note that some implementations of STRIPS disagree on whether or not the goal description of an instance of STRIPS
-should have only a single or multiple set of variables. In the original paper, a single goal state is used. %TODO: check
+should be only a single or multiple set of predicates. In the original paper, the goal is stated to be
+a single set of predicates with potentially free variables, but the paper on Graphplan accepts more than one goal \cite{fikes1971strips} \cite{blum1997fast}
 One can however translate a STRIPS implementation with multiple possible goal states into an implementation with only a single
-goal while preserving validity by adding a new variable, $goal_achieved$, setting it as the new goal and creating
-a new action for each of the multiple goal states that requires the old goal to be set, and sets the new variable. %TODO: prove?
+goal while preserving validity by adding a new predicate without propositions, $goal\_achieved$, setting it as the new goal and creating
+a new action for each of the multiple goal states that requires the old goal to be set, and sets the goal proposition. %TODO: prove?
 
-The implementation of graphplan this paper presents uses multiple goals, as searches with a heuristic perform better. %TODO: ?? prove? explain?
+The implementation of graphplan this paper presents uses multiple goals, as searches with a heuristic perform better (see \ref{sec:results} for experimental evidence). %TODO: ?? prove? explain?
 
 \subsection{Applications}
 \label{sec:strips_applications}
 
 %TODO: reword
-STRIPS in and of itself is not used often these days, not only because the planning in static, single-agents worlds
-has become unpopular, but also because the advent of PDDL led to many ditching STRIPS for PDDL, as it had a lot more
-solvers as well as public attention, and is more expressive, being able to much more efficiently encode information such as 
-position or timing, and actually encodes types properly. Notably, it however still inspired large parts of PDDL, as the 
-preconditions and add-list and delete-list are kept almost verbatim in PDDL (just with the optional extensions using ADL), 
-and the fact that PDDL also has a STRIPS compatibility mode. 
+Despite the advent of more expressive planning domains, such as PDDL, applications of STRIPS is still being researched,
+mainly due to its simplicity and interpretability \cite{aeronautiques1998pddl} \cite{gnad2019learning} \cite{fikes1993strips}.
+STRIPS can still be used in autonomous agents having to plan out a series of actions while knowing all actions they could take. 
+Its downsides are mainly in the fact that it is very limited in the kinds of worlds it can model, in contrast to domains such as PDDL, 
+which can model much more, including proper tying, numbers and action costs \cite{aeronautiques1998pddl}.
 
-A very short section about which problems the STRIPS problem format could be used for 
-and why it can be especially useful (Reduction to P-Hard problems) % ? Graphplan claims to be P-Fast on a problem that is technically P-Space hard.
+% Notably, the PDDL standard specifies a STRIPS mode
+
+% ? Graphplan claims to be P-Fast on a problem that is technically P-Space hard.
+% Turns out that one of the variables graphplan is P-fast on is the length of the solution, so it doesn't count.
 
 \section{Breadth-first Search}
 \label{sec:bf_search}
 
 Because only the agent can transform the state of a STRIPS problem, the search space can be represented by a directed graph where
-two states are connected, if the second state is reachable from the first by an action. Thus, the goal can be searched by known graph 
-search algorithms, such as breadth-first search. 
-
-Because a state may appear multiple times in the graph, proper memoization is necessary to make sure the search does not get stuck in
-and infinite loop. Other than that, a simple breadth-first search is easy to implement and can serve as a good grounding for the
-implementation of graphplan. Because of its simplicity, it is also much easier to prove statements about it in lean. 
-%TODO: reword
+two states are connected if the second state is reachable from the first by an action.
+However, the state graph can have cycles, so proper memoization is necessary to make sure the search does not repeat work or loop endlessly.
+A simple breadth-first search does work as a reference for solving simple problems.
+% Additionally, because of its simplicity, it is comparitively easier to prove its correctness in Lean.
 
 However, since the problem space of a fully grounded STRIPS instance can be exponentially larger than the informal description, 
-the search graph that a breadth-first search spans also grows exponentially, leading to the search having to traverse TODO!
-even when the solution is only TODO states away.
-%TODO: measure the amount of states the linear search had to traverse while solving Hanoi problems! Or use the rocket problem. 
+the search graph that a breadth-first search spans also grows exponentially, leading to the search slowing down 
+heavily even if the solution is only a few states away (see \ref{sec:results}) \cite{gnad2019learning}.
 
-This weakness of breadth-first search is alleviated quite a bit in graphplan %TODO: "alleviated" doesn't fit, it's more like "fixed"
+The high space and time complexity of breadth-first search is not carried over to the Graphplan algorithm, since it doesn't search the state space, but 
+a planning graph it constructed. 
 %TODO: is the memory footprint of graphplan really better? DO the mutexes not take up an exponential amount of memory?
+% 
 
 % A small section on linear search, the search algorithm implemented
 % in the recommended Github repository. 
 % Should definitely be using terminology from the lecture.
 %TOOD: check terminology!
-
-Also maybe a few notes on the implementation in LEAN. 
 
 % The figure showing the planning graph, from the paper
 \begin{figure*}
@@ -300,7 +307,7 @@ Also maybe a few notes on the implementation in LEAN.
 
 The Graphplan algorithm does not attack the STRIPS problem by searching the state space, but by creating a 
 planning graph instead. The planning graph that the algorithm creates during the search phase alternates between
-state layers and action layers (see Figure 1). % couldn't get the \ref working well. TODO?
+state layers, consisting of propositions, and action layers, consisting of actions (see Figure 1). % couldn't get the \ref working well. TODO?
 It starts with a state layer consisting of all propositions of the starting state.
 Each layer also has a set of mutexes, defining which pair of states or actions cannot coexist
 (i.e. are mutually exclusive), that is, no valid plan could possibly contain both,
@@ -318,18 +325,18 @@ From any state layer, the action layer can be constructed by generating all acti
 in the state layer such that no pair of preconditions have a mutex. Additionally, all pairs of destinct actions
 need to be marked mutex if they interfere or have competing needs. Two actions interfere if either deletes
 a precondition or effect of the other. Two actions have competing needs if there exists a precondition of one
-action that is mutex with another precondition of the other action. 
+action that is mutex with another precondition of the other action. \cite{blum1997fast}
 
 In order to generate a state layer from the previous action layer and its state layer, all propositions from
-the source state layer are copied over, maintaining mutexes. A new proposition is added if there is an 
-action that has it as an add-effect. 
+the source state layer are copied over, maintaining mutexes. %This can also be modelled by the noop action, which requires its free predicate to be true and sets the predicate to true.
+A new proposition is added if there is an action that has it as an add-effect. 
 Mutexes are then updated: for each pair of prepositions in a state layer, if the action causing one preposition
 is mutex with the action causing the other preposition, for all possible source actions causing both propositions, 
-then this pair is mutually exclusive. Mutexes from previous layers can be removed is there are two actions 
+then this pair is mutually exclusive.
+Mutexes from previous layers are not carried over if there are two actions 
 with no mutex, each causing one of the propositions. 
 
 
-%TODO: should I cite the graphplan paper in this situation?
 %TODO: recheck mutex behaviour?
 
 \section{Lean}
@@ -347,6 +354,9 @@ This allows code in Lean to express and prove statements about the code itself, 
 can be seen in the formal verification of the Amazon AWS Cedar language, which is responsible for 
 defining permissions on Amazons code services \cite{cedar}.
 
+% Proving correctness, optimality or other statement about code can be useful in contexts where 
+% these properties cannot be 
+
 % \subsection{Lean as a programming language}
 % Lean was influenced strongly by ML and Haskell 
 % I'm not sure whether I actually have enough to write about lean as a programming language. In any case, I should probably
@@ -361,16 +371,16 @@ It uses the calculus of constructions, a dependent type theory that allows the e
 complicated types, as well as propositions and proofs thanks to the Curry-Howard isomorphism \cite{theoremProvingInLean4}.
 
 Using the isomorphism, all propositions expressible in Lean are represented by the kernel as a type
-which has no elements if it is false and has elements if it is true. Proving a proposition in Lean thus
-reduces to the problem of producing an element of a certain type, namely of the proposition. %TODO: reword
+which is inhabited iff the corresponsing proposition is true. Proving a proposition in Lean thus
+reduces to the problem of producing an element of that propositions type.
 Since the content of the element of the proposition is irrelevant (a single element proves that the
 proposition is inhabited and thus true), Lean also applies the concept of proof irrelevance, where
 all proofs of the same proposition are equal.
 
 In order to produce this element and thus prove the proposition, Lean provides a suite of theorems on common
 data types such as natural numbers, functions, lists, etc., as well as tactics to manipulate the proof state. 
-Together with only three axioms (propositional extensionality: all propositions of the same type are equal, 
-function extensionality: two functions are equal iff they behave the same on all elements, the axiom of choice),
+Together with only three axioms (propositional extensionality: all propositions of the same type are equal; 
+function extensionality: two functions are equal iff they behave the same on all elements; the axiom of choice),
 as well as the definitions of data types, Lean and its community have constructed MathLib, a project with 
 more than two million lines across more than nine thousand files \cite{10.1145/3372885.3373824} \cite{githubMathlib}.
 It has been used in many projects, for example in the ongoing effort to formalize Fermat's last theorem, 
@@ -379,25 +389,21 @@ and is also the groundwork for the code and proofs of this paper \cite{githubFLT
 \subsection{Breadth-first and best-first search implementation in Lean}
 \label{subsec:bf_search_implementation}
 
-%TODO: reword
-Implementing breadth-first search (see \ref{sec:bf_search}) in Lean was not very difficult, as a simple algorithm with memoization
-translates almost directly into Lean. It keeps track of all states it visited, starts from the starting state, 
+The simplicity of the breadth-first search algorithm (see \ref{sec:bf_search}) carries over to its implementation in lean,
+as a simple algorithm with memoization translates almost directly. It keeps track of all states it visited, starts from the starting state, 
 and adds all accessible states from the current state to a queue, unless it visited it before; iteratively working through the queue. 
 For the reconstruction, in the memoization hashmap, it also stores the previous state. Once it finds the goal state,
-it starts backtracking by iteratively finding the previous state in th hashmap.
+it starts backtracking by iteratively finding the previous state in the hashmap.
 
-Testing the implementation shows that it can solve small problems without problems, but quickly slows down once the problem becomes bigger, 
-which is to be expected, as both its time and space complexity grows exponentially in the minimal number of steps to the goal. %TODO: cite?
+Testing the implementation shows it to be able to solve small problems without in reasonable time, but quickly slows down once the problem becomes bigger, 
+which is to be expected, as both its time and space complexity grows exponentially in the minimal number of steps to the goal \cite{gnad2019learning}.
 
 Another well-known algorithm, best-first search, was also implemented in Lean. It searches the state space very similar to breadth-first search, 
-with the difference that it prioritizes nodes that have a higher score according to some heuristic, breaking the optimality guarantee.
+but prioritizes states that have a higher score according to some heuristic, breaking the optimality guarantee.
 In the context of STRIPS, there are not many universally applicable heuristics, %TODO: check or remove
 but for this case, the maximal number of fulfilled predicates across all goals is chosen.
-This does improve the performance over breadth-first search, though inconsistently across tasks. %TODO: measure! 
+This does improve the performance over breadth-first search, though inconsistently across tasks, see \ref{sec:results}.
 
-% A small section on applying linear search to the sample problem from
-% the section on STRIPS. Should get the reader to understand applied 
-% STRIPS a bit better and prepare for the Graphplan explaination.
 % %TODO: should I really show this? probably, yes....
 
 \subsection{Proving correctness of breadth-first search}
@@ -410,16 +416,16 @@ Part of the code for this implementation was generated by Aristotle, a harness f
 allowing them to generate proofs \cite{aristotle}. However, the generated code did not properly prove the correctness of the algorithm,
 and instead, before returning the result, checked whether it was correct. It could then simply return this as
 a proof of the correctness or return that no solution was found, if the constructed path was incorrect. 
-A proper solution that proves that the backtracing can only result in a proper solution, without having to check, 
+A proper solution that proves that the backtracing can only result in a proper solution without having to check, 
 was later written manually, leaving less than a fourth of the code generated by Aristotle. 
 
 Note the proof of correctness is only for the result that is returned, not for the entire algorithm, in that 
-it was not (yet) %TODO remove?
+it was not %TODO remove?
 proven that the algorithm always returns a solution if one exists, only that if it does return a solution, it is correct.
 Proving the latter is considerably less complex than the former, as that would require proving both that
 each cycle in the memoization hashmap passes through the starting point and that both recursive functions always terminate. 
-For the same reasons and also due to the higher complexity, there are currently no proofs for the graphplan implementation. 
-%TODO: should I mention the usage of fuel for recursion termination? 
+For the same reasons and also due to the higher complexity, there are currently no proofs for the graphplan implementation
+or for the optimality of the breadth-first search implementation. 
 
 All code for this paper can be read on Github \cite{githubRepo}. 
 
@@ -435,15 +441,15 @@ All code for this paper can be read on Github \cite{githubRepo}.
 \label{sec:results}
 
 By abstracting over the states and instead searching through its own data structure, the Graphplan algorithm
-scales much better as the problem increases both in complexity and in solution length. %TODO: show table! 
+scales much better as the problem increases both in complexity and in solution length (see Figure 2).
 Notably, while for most problems, the state space grows exponentially in the solution length (and therefore
 also the space and time complexity of state-space based algorithms), the Graphplan
 algorithm has both a time and space complexity polynomial in the number of objects, propositions in the initial
-conditions, number of actions and longest list of effects of any action. \cite{blum1997fast}
+conditions, number of actions and longest list of effects of any action \cite{blum1997fast}.
 
-Taking the example from the Graphplan paper, consider a rocket-based cargo transport environment. 
+Taking the example from the Graphplan paper, consider a rocket-based cargo transport environment (see also \ref{subsec:strips_example}). 
 There are two rockets at the start $S$ and $n$ pieces of cargo should arrive at destination $D1$ or $D2$ depending
-on whether they are even or odd. Both rockets start with fuel but cannot be refueled.
+on whether they are even or odd. Both rockets start with fuel for one trip, but cannot be refueled.
 The cargo can be loaded into and out of the rockets. 
 A general solution for $n>1$ is: Load all even cargo into Rocket 1 ($\lfloor \frac{n}{2}\rfloor$ steps),
 load all odd cargo into rocket 2 ($\lceil \frac{n}{2}\rceil$ steps), fly rocket 1 to destination 1 and rocket 2 to
@@ -454,6 +460,10 @@ leading to very long solving times for algorithms that explore the state space, 
 (see Figure 2). 
 However, the solution can be represented very well in a planning graph due to the low number of propositions, 
 leading to very fast solutions, as can be seen in Figure 2. 
+The heuristic search algorithm also has better performance than the breadth-first search, but only achieves one 
+cargo more before also requiring more than five minutes to find a solution. 
+Note that the direct breadth-first search implementation is slightly faster than the implementation with proof
+since the latter uses worse data structures and algorithms in order to simplify the proof. 
 Additionally, the graphplan algorithm can solve the Rocket problem with 57 pieces of cargo in the same time
 it takes the Best First algorithm to solve it with four pieces of cargo (both about 480ms). 
 
@@ -463,10 +473,11 @@ it takes the Best First algorithm to solve it with four pieces of cargo (both ab
 % Best if the visualization/problem shows the strengths of graphplan.
 %TODO: maybe also write a bit about extensions to Graphplan? there are many papers on that... 
 
-\section{Conclusion}
-\label{sec:conclusion}
+% \section{Conclusion}
+% \label{sec:conclusion}
 
-Conclusion, if neccessary. 
+% This paper presented both the STIPS planning domain as well as the Graphplan planning algorithm on 
+% Lack of time, sorry.
 
 % insert your bibliographic references into the bib.bib file
 \bibliographystyle{plain}
