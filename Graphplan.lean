@@ -137,19 +137,13 @@ def MonkeyBox_STRIPS_Plan : STRIPS_Plan MonkeyBoxProp where
 
 -- The same example, but using the DSL operator `>-`
 def Example_Simulation_End_state_DSL : STRIPS_Plan MonkeyBoxProp :=
-  let test :=
-    -- TakeBananas C
-    -- >- ClimbUp C
-    -- >- MoveBox B C
-    -- >- Move A B
-    -- >- MonkeyBox_STRIPS_Plan
-    MonkeyBox_STRIPS_Plan
-    >- Move A B
-    >- MoveBox B C
-    >- ClimbUp C
-    >- TakeBananas C
-  test
+  MonkeyBox_STRIPS_Plan
+  >- Move A B
+  >- MoveBox B C
+  >- ClimbUp C
+  >- TakeBananas C
 
+#eval Search.is_valid_plan Example_Simulation_End_state_DSL []
 
 def main : IO Unit := do
   IO.println file_parse_result
