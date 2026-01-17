@@ -34,3 +34,7 @@ root = "examples.Hanoi"
 [[lean_exe]]
 name = "Rocket-test"
 root = "examples.RocketN"
+
+[[lean_exe]]
+name = "Sliding-test"
+root = "examples.SlidingPuzzle"
