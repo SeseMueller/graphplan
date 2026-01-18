@@ -39,7 +39,7 @@
 %\usepackage[outer=2.5cm]{geometry} 		% Type area (size, margins...) !!!Print version
 %\usepackage{geometry} 									% Type area (size, margins...) !!!Proofread version
 \usepackage{geometry} 	  % Type area (size, margins...) !!!Draft version
-\geometry{a4paper,body={7.0in,9.1in}}
+\geometry{a4paper,body={7.45in,10.2in}}
 
 \usepackage{hyperref}                   % Allow the clicking on references and citations
 \usepackage{graphicx}                   % Inclusion of graphics
@@ -176,24 +176,50 @@ as well as a formally verified breadth-first search for the STRIPS domain.
 
 \IEEEpeerreviewmaketitle
 
-\section{STRIPS}
-\label{sec:strips}
+\section{Related Work}
+\label{sec:related_work}
+
 
 % TODO: what is a Problem language named? just "problem language"? maybe check out lecture. 
 The Stanford Research Institute Problem Solver (STRIPS) is both a planning domain and problem solver 
-developed in 1971 at the Stanford Research Institute in California. \cite{fikes1971strips}
+developed in 1971 at the Stanford Research Institute in California \cite{fikes1971strips}.
 This paper will focus on the planning domain, as its instances are the input of the Graphplan algorithm.
-
 The problem space of the STRIPS planning language is that of a single agent in a static state that can only be transformed 
 into another static state using an action from a set of available actions. It "[…] is often cited as providing
 a seminal framework for attacking [this] 'classical planning problem' […]" \cite{fikes1993strips}. 
-%TODO: reorder, this doesn't fit well here but should probably be said.
 
-\subsection{The Problem space}
+% STRIPS is however quite limited in the complexity of the problems it can represent, as it cannot effectively 
+% represent non-boolean value such as positions. The current standard for planning domain representation, PDDL, 
+% is more expressive, being able to represent types, numbers and different action costs. 
+
+Despite the advent of more expressive planning domains, such as PDDL, applications of STRIPS are still being researched,
+mainly due to its simplicity and interpretability \cite{aeronautiques1998pddl} \cite{gnad2019learning} \cite{fikes1993strips}.
+Its downsides are mainly in the fact that it is very limited in the kinds of worlds it can model, in contrast to domains such as PDDL, 
+which is more expressive, being able to represent types, numbers and action costs \cite{aeronautiques1998pddl}.
+Still, the impact of STRIPS on the field of planning can be seen here,
+as the PDDL standard is heavily inspired by STRIPS and even specifies a STRIPS-only mode.
+
+The Graphplan algorithm, introduced by Blum et al. in 1997, solves problems from the STRIPS domain
+not by exploring the state graph, but by constructing a planning graph, a datastructure that efficiently encodes which
+propositions and actions are possible to reach and which are mutually exclusive \cite{blum1997fast}. 
+Because the complexity is not directly bound to the size of the state graph, the algorithm scales extremely well 
+on many different problems (see also \ref{sec:results}) \cite{blum1997fast}. 
+
+Due to the additional complexity with formal verification of algorithms, there are only few works on formally verifying 
+planning algorithms; notably, Abdulaziz and Koller wrote a formally verified validation for the temporal domain 
+specified in the PDDL standard and Abdulaziz and Kurz wrote a formally verified translator from the planning domain 
+to the problem of satisfiability, allowing the usage of SAT-Solvers to solve planning problems \cite{abdulaziz2023formallyverifiedsatbasedai} \cite{Abdulaziz_Koller_2022}.
+However, there is one paper by Abdualaziz et al. where a compositional Algorithm for a problem equivalent to STRIPS 
+is formally verified in the HOL4 interactive theorem prover \cite{abdulaziz2019verified}. 
+
+\section{STRIPS}
+\label{sec:strips}
+
+\subsection{The STRIPS domain}
 \label{subsec:problem_space}
 
 %TODO: look at the solver the paper used and compare it to linear search and graphplan
-STRIPS operates in a closed world of first-order predicate logic.
+The STRIPS domain is a closed world of first-order predicate logic.
 Instances of the STRIPS domain operate on predicates with zero or more primitives, and all predicates that aren't known to be true 
 are assumed to be false.
 The problem space for an instance of STRIPS consists of the initial conditions (predicates), the goal conditions,
@@ -228,6 +254,15 @@ contains free variables. \cite{gnad2019learning}
 
 %TODO: add distinction between problem world and problem instance?
 
+% The figure showing the planning graph, from the paper
+\begin{figure*}
+  \label{Figure 1}
+  \centering
+  \includegraphics[width=500pt]{Graphplan_Planning_Graph.png}
+  \caption{The planning graph of Graphplan on the rocket problem. Configuration: One Rocket, 
+  two pieces of cargo, A and B, one start Location L, one destination R; from Blum et. al. 1997. }
+\end{figure*}
+
 \subsection{Example}
 \label{subsec:strips_example}
 
@@ -235,7 +270,7 @@ contains free variables. \cite{gnad2019learning}
 An example of a STRIPS problem also described in the paper is that of a rocket-based cargo-hauling 
 operation. The primitives of this STRIPS instance are the places, the rockets and the cargo (see also Figure 1).
 The three predicates are "At", "In" and "HasFuel", with two, two and one free variables respectively. %TODO: Graphics??
-The first action is "Load", with three free variables that have to implement the predicates CARGO, ROCKET and PLACE respectively.
+The first action is "Load", with three free variables that have to implement the predicates "Cargo", "Rocket" and "Place" respectively.
 It requires the rocket to be "At" the place, and the cargo to be "At" the place and leads to the cargo being "In" the rocket and the cargo no longer being "At" the place.
 The second action, "Unload", has the same free variables and predicate requirement as "Load", but instead requires the rocket to be "At" the place
 and the object to be "In" the rocket and leads to the object being "At" the place and not being "In" the rocket anymore.
@@ -248,24 +283,12 @@ It leads to the rocket being "At" the second place, the rocket not being "At" th
 
 Note that some implementations of STRIPS disagree on whether or not the goal description of an instance of STRIPS
 should be only a single or multiple set of predicates. In the original paper, the goal is stated to be
-a single set of predicates with potentially free variables, but the paper on Graphplan accepts more than one goal \cite{fikes1971strips} \cite{blum1997fast}
+a single set of predicates with potentially free variables, but the paper on Graphplan accepts more than one goal \cite{fikes1971strips} \cite{blum1997fast}.
 One can however translate a STRIPS implementation with multiple possible goal states into an implementation with only a single
 goal while preserving validity by adding a new predicate without propositions, $goal\_achieved$, setting it as the new goal and creating
 a new action for each of the multiple goal states that requires the old goal to be set, and sets the goal proposition. %TODO: prove?
 
 The implementation of Graphplan this paper presents uses multiple goals, as searches with a heuristic perform better (see \ref{sec:results} for experimental evidence). %TODO: ?? prove? explain?
-
-\subsection{Applications}
-\label{sec:strips_applications}
-
-%TODO: reword
-Despite the advent of more expressive planning domains, such as PDDL, applications of STRIPS are still being researched,
-mainly due to its simplicity and interpretability \cite{aeronautiques1998pddl} \cite{gnad2019learning} \cite{fikes1993strips}.
-STRIPS can still be used in autonomous agents having to plan out a series of actions while knowing all actions they could take. 
-Its downsides are mainly in the fact that it is very limited in the kinds of worlds it can model, in contrast to domains such as PDDL, 
-which is more expressive, being able to model proper types, numbers and action costs \cite{aeronautiques1998pddl}.
-
-% Notably, the PDDL standard specifies a STRIPS mode
 
 % ? Graphplan claims to be P-Fast on a problem that is technically P-Space hard.
 % Turns out that one of the variables graphplan is P-fast on is the length of the solution, so it doesn't count.
@@ -293,20 +316,11 @@ a planning graph it constructed.
 % Should definitely be using terminology from the lecture.
 %TOOD: check terminology!
 
-% The figure showing the planning graph, from the paper
-\begin{figure*}
-  \label{Figure 1}
-  \centering
-  \includegraphics[width=500pt]{Graphplan_Planning_Graph.png}
-  \caption{The planning graph of Graphplan on the rocket problem. Configuration: One Rocket, 
-  two pieces of cargo, A and B, one start Location L, one destination R; from Blum et. al. 1997. }
-\end{figure*}
-
 \section{Graphplan}
 \label{sec:graphplan}
 
 The Graphplan algorithm does not attack the STRIPS problem by searching the state space, but by creating a 
-planning graph instead. The planning graph that the algorithm creates during the search phase alternates between
+planning graph and searching it instead. The planning graph that the algorithm creates during the search phase alternates between
 state layers, consisting of propositions, and action layers, consisting of actions (see Figure 1). % couldn't get the \ref working well. TODO?
 It starts with a state layer consisting of all propositions of the starting state.
 Each layer also has a set of mutexes, defining which pair of states or actions cannot coexist
@@ -479,9 +493,21 @@ Note that the direct breadth-first search implementation is slightly faster than
 since the latter uses worse data structures and algorithms in order to simplify the proof. 
 Additionally, the Graphplan algorithm can solve the Rocket problem with 57 pieces of cargo in the same time
 it takes the Best First algorithm to solve it with four pieces of cargo (both about 480ms). 
-The experiment was performed on a Macbook with M1 chip while it was connected to power, 
+
+In the second experiment, the 15-Puzzle is encoded in STRIPS with the 15 sliding pieces numbered one to 15 and
+the cells of the four-by-four grid being numbered one to 16. There is a single action, to slide one of the pieces into the empty
+cell, swapping them. The experiment shown in Figure 3 gives as input the 15-Puzzle with $n$ random moves from the solved state. 
+While the seach space is very large with approximately $10^{13}$ positions, it has a maximal branching factor of 4, as a 
+maximum of four pieces could be moved in a single position \cite{culberson1994efficiently}.
+Notably, as can be seen in Figure 3, the Graphplan algorithm scales much better than the algorithms which explore the state space. 
+Additionally, the best first search takes more than six minutes for solving six random moves because it encounters
+a sussmann anomaly where placing two pieces (seven and eight) in their final positions greedily leads to a wrong parity 
+in the last three pieces (eleven, twelve and fifteen). The other algorithms do not encounter this anomaly because they 
+do not search greedily. 
+
+Both experiments was performed on a Macbook with M1 chip while it was connected to power, 
 with Lean running the compiled algorithms on the problem 100 times.
-All datapoints in Figure 2 higher than 500ms were experiments that were only run once.
+All datapoints higher than 500ms were experiments that were only run once.
 All algorithms expect Graphplan were stopped after running more than five minutes without finding a solution.
 
 %Probably insert the table of performance across problems? 
@@ -490,13 +516,18 @@ All algorithms expect Graphplan were stopped after running more than five minute
 % Best if the visualization/problem shows the strengths of graphplan.
 %TODO: maybe also write a bit about extensions to Graphplan? there are many papers on that... 
 
-% \section{Conclusion}
-% \label{sec:conclusion}
+\section{Conclusion}
+\label{sec:conclusion}
 
-% This paper presented both the STIPS planning domain as well as the Graphplan planning algorithm on 
-% Lack of time, sorry.
+This paper presented a formal implementation of the STRIPS planning domain in the Lean programming language and theorem prover, 
+as well as an implementation of the Graphplan Algorithm to solve STRIPS instances.
+Two experiments on STRIPS problems with variable complexity were run to measure the performance of Graphplan 
+as well as three other reference algorithms. 
+In both cases, the Graphplan algorithm overtook all other algorithms in speed as the complexity increased.
+Additionally, the correctness of the result of a breadth-first search algorithm was proven formally, demonstrating
+the ability of Lean to express correctness of planning algorithms. 
 
-% insert your bibliographic references into the bib.bib file
+
 \bibliographystyle{plain}
 \addcontentsline{toc}{section}{Bibliography} % Add to the TOC
 \bibliography{references}

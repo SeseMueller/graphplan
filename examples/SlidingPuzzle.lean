@@ -311,3 +311,26 @@ def main : IO Unit := do
 
   for n in List.finRange 100 do
     run_with n tries
+
+-- Check: print out board for a random scramble of depth 6
+#eval
+
+  -- The board that Best First search struggles with:
+  let b := Sliding_Problem_scrambled 6 0
+
+  for p in Pos.all do
+    match b.current_state.find? (fun prop =>
+      match prop with
+      | At _ pos => pos = p
+      | _ => false) with
+    | some (At t _) =>
+        IO.print s!"{t.val + 1} "
+    | _ =>
+        IO.print " _ "
+    if (p.val + 1) % 4 = 0 then
+      IO.println ""
+
+-- Interestingly enough, this board has a very nice "false solution",
+-- where with three obvious moves, (12, 7, 8),
+-- all numbers except 11, 12 and 15 are in place. The best first search gets stuck here because
+-- 11 and 12 have wrong parity, and it would take several moves to fix that.
